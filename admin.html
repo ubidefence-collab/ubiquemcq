@@ -133,7 +133,7 @@ tr:hover td { background: rgba(79,70,229,0.06); }
 .form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; }
 .form-control {
   width: 100%; padding: 0.65rem 0.9rem;
-  background: rgba(255,255,255,0.06);
+  background: #2D2B4E;
   border: 1px solid var(--border);
   border-radius: 10px;
   color: var(--text);
@@ -141,8 +141,12 @@ tr:hover td { background: rgba(79,70,229,0.06); }
   font-size: 0.92rem;
   transition: all 0.2s;
 }
-.form-control:focus { outline: none; border-color: var(--primary-light); background: rgba(79,70,229,0.1); }
+.form-control:focus { outline: none; border-color: var(--primary-light); background: #3730A3; }
 textarea.form-control { min-height: 80px; resize: vertical; }
+.form-control option {
+  background: #2D2B4E;
+  color: var(--text);
+}
 
 /* BUTTONS */
 .btn {
@@ -310,6 +314,14 @@ textarea.form-control { min-height: 80px; resize: vertical; }
           <option value="8">ক্লাস ৮</option><option value="9">ক্লাস ৯</option>
           <option value="10">ক্লাস ১০</option>
         </select>
+        <select class="form-control" id="filterBatch" style="width:auto" onchange="loadStudents()">
+          <option value="">সব ব্যাচ</option>
+          <option value="A">Batch A</option>
+          <option value="B">Batch B</option>
+          <option value="C">Batch C</option>
+          <option value="D">Batch D</option>
+          <option value="E">Batch E</option>
+        </select>
       </div>
       <div class="table-wrap" id="studentsTable">লোড হচ্ছে...</div>
     </div>
@@ -375,6 +387,13 @@ textarea.form-control { min-height: 80px; resize: vertical; }
           <option value="8">ক্লাস ৮</option><option value="9">ক্লাস ৯</option>
           <option value="10">ক্লাস ১০</option>
         </select>
+        <select class="form-control" id="meritBatchFilter" style="width:auto" onchange="loadAdminMerit()">
+          <option value="A">Batch A</option>
+          <option value="B">Batch B</option>
+          <option value="C">Batch C</option>
+          <option value="D">Batch D</option>
+          <option value="E">Batch E</option>
+        </select>
         <select class="form-control" id="meritMonthFilter" style="width:auto" onchange="loadAdminMerit()">
           <option value="February 2025">ফেব্রুয়ারি ২০২৫</option>
           <option value="March 2025">মার্চ ২০২৫</option>
@@ -417,6 +436,16 @@ textarea.form-control { min-height: 80px; resize: vertical; }
         <label class="form-label">মোবাইল</label>
         <input class="form-control" id="sPhone" placeholder="01XXXXXXXXX">
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">ব্যাচ</label>
+      <select class="form-control" id="sBatch">
+        <option value="A">Batch A</option>
+        <option value="B">Batch B</option>
+        <option value="C">Batch C</option>
+        <option value="D">Batch D</option>
+        <option value="E">Batch E</option>
+      </select>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('addStudentModal')">বাতিল</button>
@@ -463,6 +492,16 @@ textarea.form-control { min-height: 80px; resize: vertical; }
       <div class="form-group">
         <label class="form-label">সময় (মিনিট)</label>
         <input class="form-control" id="eDuration" type="number" value="30" min="5">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ব্যাচ</label>
+        <select class="form-control" id="eBatch">
+          <option value="A">Batch A</option>
+          <option value="B">Batch B</option>
+          <option value="C">Batch C</option>
+          <option value="D">Batch D</option>
+          <option value="E">Batch E</option>
+        </select>
       </div>
     </div>
     <div class="form-row">
@@ -609,15 +648,18 @@ async function loadDashboard() {
 // ── STUDENTS ──
 async function loadStudents() {
   const cls = document.getElementById('filterClass').value;
-  let q = sb.from('students').select('*').order('class').order('roll');
+  const batch = document.getElementById('filterBatch').value;
+  let q = sb.from('students').select('*').order('class').order('batch').order('roll');
   if(cls) q = q.eq('class',cls);
+  if(batch) q = q.eq('batch',batch);
   const {data} = await q;
   const wrap = document.getElementById('studentsTable');
   if(!data||!data.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো শিক্ষার্থী নেই</p>';return;}
-  wrap.innerHTML = `<table><thead><tr><th>নাম</th><th>ক্লাস</th><th>রোল</th><th>মোবাইল</th><th>যোগদান</th><th>মুছুন</th></tr></thead>
+  wrap.innerHTML = `<table><thead><tr><th>নাম</th><th>ক্লাস</th><th>ব্যাচ</th><th>রোল</th><th>মোবাইল</th><th>যোগদান</th><th>মুছুন</th></tr></thead>
   <tbody>${data.map(s=>`<tr>
     <td><strong>${s.name}</strong></td>
     <td><span class="badge badge-class">ক্লাস ${s.class}</span></td>
+    <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#FCD34D">Batch ${s.batch}</span></td>
     <td>${s.roll}</td>
     <td>${s.phone}</td>
     <td>${new Date(s.created_at).toLocaleDateString('bn-BD')}</td>
@@ -630,9 +672,10 @@ async function addStudent() {
   const cls=document.getElementById('sClass').value;
   const roll=document.getElementById('sRoll').value.trim();
   const phone=document.getElementById('sPhone').value.trim();
+  const batch=document.getElementById('sBatch').value;
   if(!name||!roll||!phone){showAlert('addStudentError','সব তথ্য পূরণ করুন');return;}
   loading(true);
-  const {error} = await sb.from('students').insert({name,class:cls,roll,phone});
+  const {error} = await sb.from('students').insert({name,class:cls,roll,phone,batch});
   loading(false);
   if(error){showAlert('addStudentError','ত্রুটি: '+error.message);return;}
   showAlert('addStudentSuccess','শিক্ষার্থী যোগ হয়েছে!','success');
@@ -654,13 +697,14 @@ async function loadExams() {
   const {data} = await sb.from('exams').select('*').order('created_at',{ascending:false});
   const wrap = document.getElementById('examsTable');
   if(!data||!data.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো পরীক্ষা নেই</p>';return;}
-  wrap.innerHTML = `<table><thead><tr><th>শিরোনাম</th><th>বিষয়</th><th>ক্লাস</th><th>সপ্তাহ</th><th>সময়</th><th>শেষ তারিখ</th><th>অবস্থা</th><th>কাজ</th></tr></thead>
+  wrap.innerHTML = `<table><thead><tr><th>শিরোনাম</th><th>বিষয়</th><th>ক্লাস</th><th>ব্যাচ</th><th>সপ্তাহ</th><th>সময়</th><th>শেষ তারিখ</th><th>অবস্থা</th><th>কাজ</th></tr></thead>
   <tbody>${data.map(e=>{
     const expired = new Date(e.end_date)<new Date();
     return `<tr>
       <td><strong>${e.title}</strong></td>
       <td>${e.subject}</td>
       <td><span class="badge badge-class">${e.class}</span></td>
+      <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#FCD34D">Batch ${e.batch||'A'}</span></td>
       <td>সপ্তাহ ${e.week_number}</td>
       <td>${e.duration_minutes} মিনিট</td>
       <td>${new Date(e.end_date).toLocaleDateString('bn-BD')}</td>
@@ -677,11 +721,12 @@ async function addExam() {
   const week=parseInt(document.getElementById('eWeek').value);
   const month=document.getElementById('eMonth').value.trim();
   const dur=parseInt(document.getElementById('eDuration').value);
+  const batch=document.getElementById('eBatch').value;
   const start=document.getElementById('eStart').value;
   const end=document.getElementById('eEnd').value;
   if(!title||!subject||!month||!start||!end){showAlert('addExamError','সব তথ্য পূরণ করুন');return;}
   loading(true);
-  const {error} = await sb.from('exams').insert({title,subject,class:cls,week_number:week,month,duration_minutes:dur,start_date:new Date(start).toISOString(),end_date:new Date(end).toISOString()});
+  const {error} = await sb.from('exams').insert({title,subject,class:cls,week_number:week,month,duration_minutes:dur,batch,start_date:new Date(start).toISOString(),end_date:new Date(end).toISOString()});
   loading(false);
   if(error){showAlert('addExamError','ত্রুটি: '+error.message);return;}
   closeModal('addExamModal');
@@ -794,14 +839,16 @@ async function loadResults() {
 // ── MERIT ──
 async function loadAdminMerit() {
   const cls = document.getElementById('meritClassFilter').value;
+  const batch = document.getElementById('meritBatchFilter').value;
   const month = document.getElementById('meritMonthFilter').value;
-  const {data} = await sb.from('monthly_merit').select('*').eq('class',cls).eq('month',month).order('merit_position');
+  const {data} = await sb.from('monthly_merit').select('*').eq('class',cls).eq('batch',batch).eq('month',month).order('merit_position');
   const wrap = document.getElementById('meritTable');
   if(!data||!data.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো তথ্য নেই</p>';return;}
-  wrap.innerHTML = `<table><thead><tr><th>স্থান</th><th>নাম</th><th>রোল</th><th>মোবাইল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th></tr></thead>
+  wrap.innerHTML = `<table><thead><tr><th>স্থান</th><th>নাম</th><th>ব্যাচ</th><th>রোল</th><th>মোবাইল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th></tr></thead>
   <tbody>${data.map(r=>`<tr>
     <td><strong>${r.merit_position}</strong></td>
     <td>${r.name}</td>
+    <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#FCD34D">Batch ${r.batch}</span></td>
     <td>${r.roll}</td>
     <td>${r.phone||'-'}</td>
     <td>${r.exams_taken}</td>
