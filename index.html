@@ -605,10 +605,54 @@ tr:hover td { background: #FAFBFF; }
 
 /* ── RESPONSIVE ── */
 @media(max-width:600px) {
-  .welcome-banner { flex-direction: column; gap: 0.5rem; }
+  .header { padding: 0 1rem; }
+  .header-logo { font-size: 1.1rem; }
+  .student-badge { display: none; }
+
+  .welcome-banner { flex-direction: column; gap: 0.5rem; padding: 1.2rem; }
   .welcome-emoji { display: none; }
-  .exam-header { flex-direction: column; align-items: flex-start; }
+  .dashboard-wrap { padding: 1rem; }
+
+  .exam-grid { grid-template-columns: 1fr; }
+
+  .exam-wrap { padding: 0.8rem; }
+  .exam-header {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.9rem 1rem;
+    gap: 0.8rem;
+  }
+  .exam-header-info h3 { font-size: 0.9rem; }
+  .exam-header-info p { font-size: 0.75rem; }
+  .timer-box { min-width: 70px; padding: 0.4rem 0.8rem; }
+  .timer-time { font-size: 1.2rem; }
+
+  .q-dots { gap: 0.3rem; }
+  .q-dot { width: 28px; height: 28px; font-size: 0.7rem; }
+
+  .question-card { padding: 1rem; }
+  .q-text { font-size: 0.95rem; }
+  .option-label { padding: 0.6rem 0.8rem; font-size: 0.88rem; }
+
+  .exam-nav {
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+  .btn-nav { flex: 1; min-width: 100px; font-size: 0.82rem; padding: 0.55rem 0.8rem; }
+  .btn-submit { width: 100%; order: -1; }
+
   .result-stats { grid-template-columns: 1fr 1fr; }
+  .result-wrap { padding: 1rem; }
+  .result-score-big { font-size: 2.8rem; }
+
+  .merit-filter { flex-direction: column; align-items: flex-start; }
+  table { font-size: 0.78rem; }
+  th, td { padding: 0.5rem 0.6rem; }
+
+  .tabs { flex-wrap: nowrap; overflow-x: auto; }
+  .tab { font-size: 0.8rem; padding: 0.5rem 0.6rem; white-space: nowrap; }
+
+  .login-card { padding: 1.5rem 1.2rem; }
 }
 </style>
 </head>
@@ -810,6 +854,47 @@ let currentQ = 0;
 let timerInterval = null;
 let secondsLeft = 0;
 
+// ── KATEX RENDER ──
+function renderMath(element) {
+  if (!element) element = document.body;
+  if (window.katex && window.renderMathInElement) {
+    renderMathInElement(element, {
+      delimiters: [
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false,
+      trust: true
+    });
+  }
+}
+
+// Convert raw \frac etc to $...$ wrapped for KaTeX
+function wrapLatex(text) {
+  if (!text) return '';
+  if (/\\(frac|sqrt|times|div|cdot|sum|int|pi|alpha|beta|theta|leq|geq|neq|pm|infty|rightarrow)/.test(text)) {
+    return '$' + text + '$';
+  }
+  return text;
+}
+
+function setMathContent(element, text) {
+  if (!text) { element.textContent = ''; return; }
+  const wrapped = wrapLatex(text);
+  if (wrapped.startsWith('$')) {
+    element.innerHTML = wrapped;
+    if (window.katex && window.renderMathInElement) {
+      renderMathInElement(element, {
+        delimiters: [{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false}],
+        throwOnError: false
+      });
+    }
+  } else {
+    element.textContent = text;
+  }
+}
+
 // ── UTILS ──
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -822,23 +907,6 @@ function showError(msg) {
   const el = document.getElementById('loginError');
   el.textContent = msg;
   el.style.display = 'block';
-}
-function renderMath() {
-  if(window.renderMathInElement) {
-    renderMathInElement(document.body, {
-      delimiters: [
-        {left:'$$',right:'$$',display:true},
-        {left:'\\(',right:'\\)',display:false},
-        {left:'\\[',right:'\\]',display:true}
-      ],
-      throwOnError: false
-    });
-  }
-}
-function processLatex(text) {
-  if (!text) return '';
-  // Convert \frac, \sqrt etc for inline display
-  return text.replace(/\\/g, '\\');
 }
 
 // ── LOGIN ──
@@ -941,16 +1009,41 @@ async function startExam(examId) {
   const { data: qs } = await sb.from('questions').select('*').eq('exam_id', examId).order('question_order');
   loading(false);
   if (!exam || !qs || qs.length === 0) { alert('প্রশ্ন পাওয়া যায়নি!'); return; }
+
   currentExam = exam;
   questions = qs;
   answers = {};
   currentQ = 0;
 
+  // Timer start time sessionStorage এ সেভ করো
+  const timerKey = `exam_start_${examId}_${currentStudent.id}`;
+  if (!sessionStorage.getItem(timerKey)) {
+    sessionStorage.setItem(timerKey, Date.now().toString());
+  }
+  // Answers sessionStorage এ সেভ করো
+  const answerKey = `exam_answers_${examId}_${currentStudent.id}`;
+  const savedAnswers = sessionStorage.getItem(answerKey);
+  if (savedAnswers) answers = JSON.parse(savedAnswers);
+
+  sessionStorage.setItem('currentExam', JSON.stringify(exam));
+  sessionStorage.setItem('currentQuestions', JSON.stringify(qs));
+
   document.getElementById('examTitle').textContent = exam.title;
   document.getElementById('examMeta').textContent = `${exam.subject} | ${exam.duration_minutes} মিনিট`;
   showPage('examPage');
   renderQuestion();
-  startTimer(exam.duration_minutes * 60);
+  startTimerFromSaved(exam);
+}
+
+function startTimerFromSaved(exam) {
+  const timerKey = `exam_start_${exam.id}_${currentStudent.id}`;
+  const startTime = parseInt(sessionStorage.getItem(timerKey));
+  const totalSeconds = exam.duration_minutes * 60;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const remaining = Math.max(0, totalSeconds - elapsed);
+
+  if (remaining <= 0) { autoSubmit(); return; }
+  startTimer(remaining);
 }
 
 function renderQuestion() {
@@ -959,12 +1052,8 @@ function renderQuestion() {
   document.getElementById('qNumber').textContent = `প্রশ্ন ${currentQ+1} / ${total}`;
   document.getElementById('progressBar').style.width = `${((currentQ+1)/total)*100}%`;
 
-  // Render question text with KaTeX
-  const qTextEl = document.getElementById('qText');
-  qTextEl.innerHTML = '';
-  const span = document.createElement('span');
-  span.textContent = q.question_text;
-  qTextEl.appendChild(span);
+  // Render question with KaTeX
+  setMathContent(document.getElementById('qText'), q.question_text);
 
   const opts = [
     {key:'a', text: q.option_a},
@@ -972,26 +1061,26 @@ function renderQuestion() {
     {key:'c', text: q.option_c},
     {key:'d', text: q.option_d}
   ];
+
   document.getElementById('optionsWrap').innerHTML = opts.map(o => `
     <label class="option-label ${answers[q.id]===o.key?'selected':''}" onclick="selectAnswer('${q.id}','${o.key}',this)">
       <input type="radio" name="q" value="${o.key}" ${answers[q.id]===o.key?'checked':''}>
       <span class="option-key">${o.key.toUpperCase()}</span>
-      <span>${o.text}</span>
+      <span class="opt-text" data-raw="${encodeURIComponent(o.text)}">${o.text}</span>
     </label>`).join('');
+
+  // Render math in options
+  setTimeout(() => {
+    document.querySelectorAll('.opt-text').forEach(el => {
+      const raw = decodeURIComponent(el.getAttribute('data-raw'));
+      setMathContent(el, raw);
+    });
+  }, 0);
 
   document.getElementById('btnPrev').style.visibility = currentQ === 0 ? 'hidden' : 'visible';
   document.getElementById('btnNext').style.visibility = currentQ === questions.length-1 ? 'hidden' : 'visible';
 
   updateDots();
-  // Render math
-  setTimeout(() => {
-    if(window.renderMathInElement) {
-      renderMathInElement(document.getElementById('examPage'), {
-        delimiters:[{left:'$',right:'$',display:false},{left:'\\(',right:'\\)',display:false}],
-        throwOnError:false
-      });
-    }
-  }, 50);
 }
 
 function updateDots() {
@@ -1002,6 +1091,11 @@ function updateDots() {
 
 function selectAnswer(qId, val, el) {
   answers[qId] = val;
+  // sessionStorage এ answers সেভ করো (refresh proof)
+  if (currentExam && currentStudent) {
+    const answerKey = `exam_answers_${currentExam.id}_${currentStudent.id}`;
+    sessionStorage.setItem(answerKey, JSON.stringify(answers));
+  }
   document.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
   el.classList.add('selected');
   updateDots();
@@ -1052,6 +1146,14 @@ async function submitExam(auto) {
       answers: answers
     });
   } catch(e) { console.error(e); }
+
+  // SessionStorage পরিষ্কার করো
+  if (currentExam && currentStudent) {
+    sessionStorage.removeItem(`exam_start_${currentExam.id}_${currentStudent.id}`);
+    sessionStorage.removeItem(`exam_answers_${currentExam.id}_${currentStudent.id}`);
+    sessionStorage.removeItem('currentExam');
+    sessionStorage.removeItem('currentQuestions');
+  }
 
   // Get merit position
   const { data: allResults } = await sb.from('results')
@@ -1201,7 +1303,44 @@ async function loadMerit() {
 // ── INIT ──
 window.addEventListener('load', () => {
   const saved = sessionStorage.getItem('student');
-  if (saved) { currentStudent = JSON.parse(saved); initDashboard(); }
+  if (saved) {
+    currentStudent = JSON.parse(saved);
+
+    // চেক করো পরীক্ষা চলছিল কিনা
+    const savedExam = sessionStorage.getItem('currentExam');
+    const savedQs = sessionStorage.getItem('currentQuestions');
+    if (savedExam && savedQs) {
+      currentExam = JSON.parse(savedExam);
+      questions = JSON.parse(savedQs);
+      const answerKey = `exam_answers_${currentExam.id}_${currentStudent.id}`;
+      const savedAnswers = sessionStorage.getItem(answerKey);
+      if (savedAnswers) answers = JSON.parse(savedAnswers);
+
+      // Timer check
+      const timerKey = `exam_start_${currentExam.id}_${currentStudent.id}`;
+      const startTime = parseInt(sessionStorage.getItem(timerKey));
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, currentExam.duration_minutes * 60 - elapsed);
+
+      if (remaining > 0) {
+        // Header update
+        document.getElementById('headerStudentInfo').textContent = `${currentStudent.name} | ক্লাস ${currentStudent.class}`;
+        document.getElementById('headerStudentInfo').style.display = 'block';
+        document.getElementById('logoutBtn').style.display = 'block';
+        document.getElementById('examTitle').textContent = currentExam.title;
+        document.getElementById('examMeta').textContent = `${currentExam.subject} | ${currentExam.duration_minutes} মিনিট`;
+        showPage('examPage');
+        renderQuestion();
+        startTimer(remaining);
+        return;
+      } else {
+        // সময় শেষ, clear করো
+        sessionStorage.removeItem('currentExam');
+        sessionStorage.removeItem('currentQuestions');
+      }
+    }
+    initDashboard();
+  }
 });
 document.getElementById('loginPhone').addEventListener('keypress', e => { if(e.key==='Enter') login(); });
 </script>
