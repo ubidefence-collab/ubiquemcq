@@ -304,7 +304,10 @@ textarea.form-control { min-height: 80px; resize: vertical; }
   <div class="section" id="sec-students">
     <div class="page-header">
       <div><h1>👨‍🎓 শিক্ষার্থী</h1><p>সকল শিক্ষার্থীর তথ্য</p></div>
-      <button class="btn btn-primary" onclick="openModal('addStudentModal')">+ নতুন শিক্ষার্থী</button>
+      <div style="display:flex;gap:0.6rem">
+        <button class="btn btn-ghost" onclick="openModal('bulkImportModal')">📥 CSV Import</button>
+        <button class="btn btn-primary" onclick="openModal('addStudentModal')">+ নতুন শিক্ষার্থী</button>
+      </div>
     </div>
     <div class="card">
       <div style="display:flex;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap">
@@ -570,11 +573,61 @@ textarea.form-control { min-height: 80px; resize: vertical; }
   </div>
 </div>
 
+<!-- Bulk Import Modal -->
+<div class="modal-overlay" id="bulkImportModal">
+  <div class="modal" style="max-width:620px">
+    <h3>📥 CSV দিয়ে বাল্ক ভর্তি</h3>
+    <div style="background:rgba(79,70,229,0.1);border:1px solid var(--border);border-radius:10px;padding:1rem;margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted)">
+      <strong style="color:var(--primary-light)">CSV ফরম্যাট:</strong><br>
+      প্রথম লাইন header (skip হবে)<br>
+      <code style="color:#34D399">নাম,ক্লাস,রোল,মোবাইল,ব্যাচ</code><br><br>
+      উদাহরণ:<br>
+      <code style="color:#FCD34D">
+        রাহেলা বেগম,6,1,01711000001,A<br>
+        করিম হোসেন,7,2,01711000002,B
+      </code>
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <label class="form-label">CSV ফাইল বেছে নিন</label>
+      <input type="file" id="csvFile" accept=".csv" class="form-control" onchange="previewCSV()">
+    </div>
+
+    <div id="csvPreview" style="display:none;margin-bottom:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem">
+        <span style="font-size:0.85rem;font-weight:600;color:var(--primary-light)" id="csvPreviewLabel">প্রিভিউ</span>
+        <span class="badge badge-active" id="csvCount"></span>
+      </div>
+      <div style="max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:10px">
+        <table style="font-size:0.8rem">
+          <thead><tr><th>নাম</th><th>ক্লাস</th><th>রোল</th><th>মোবাইল</th><th>ব্যাচ</th><th>অবস্থা</th></tr></thead>
+          <tbody id="csvPreviewBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="alert alert-error" id="bulkError"></div>
+    <div class="alert alert-success" id="bulkSuccess"></div>
+
+    <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:0.8rem;margin-bottom:1rem;font-size:0.82rem;color:var(--text-muted)">
+      ⚠️ একই class+roll বা phone number থাকলে সেই row skip হবে, বাকিগুলো import হবে।
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bulkImportModal');resetCSV()">বাতিল</button>
+      <a id="csvTemplateLink" style="display:none"></a>
+      <button class="btn btn-ghost" onclick="downloadTemplate()">📄 Template Download</button>
+      <button class="btn btn-success" id="importBtn" onclick="importStudents()" disabled>📥 Import করুন</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://cjeaahqwcejxqfiascpz.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqZWFhaHF3Y2VqeHFmaWFzY3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMjA1NjcsImV4cCI6MjA4NzY5NjU2N30.tNRinQBmUfnwTV_Qh6G6gwaKThXG1AZW2v-t2qWqEK8';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let selectedExamForQ = null;
+let parsedCSVData = [];
 
 function loading(s) { document.getElementById('loadingOverlay').style.display = s?'flex':'none'; }
 function openModal(id) { document.getElementById(id).classList.add('active'); }
@@ -583,7 +636,73 @@ function showAlert(id, msg, type='error') {
   const el = document.getElementById(id);
   if(!el) return;
   el.textContent = msg; el.style.display='block'; el.className=`alert alert-${type}`;
-  setTimeout(()=>{ el.style.display='none'; }, 3000);
+  setTimeout(()=>{ el.style.display='none'; }, 4000);
+}
+
+// ── CSV IMPORT ──
+function previewCSV() {
+  const file = document.getElementById('csvFile').files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l=>l.trim());
+    parsedCSVData = [];
+    const tbody = document.getElementById('csvPreviewBody');
+    tbody.innerHTML = '';
+    // Skip header row
+    for(let i=1; i<lines.length; i++) {
+      const cols = lines[i].split(',').map(c=>c.trim().replace(/"/g,''));
+      if(cols.length < 4) continue;
+      const [name, cls, roll, phone, batch='A'] = cols;
+      if(!name||!cls||!roll||!phone) continue;
+      const valid = name.length>0 && ['6','7','8','9','10'].includes(cls) && roll.length>0 && phone.length>=11;
+      parsedCSVData.push({name,class:cls,roll,phone,batch:batch||'A',valid});
+      tbody.innerHTML += `<tr>
+        <td>${name}</td><td>${cls}</td><td>${roll}</td>
+        <td>${phone}</td><td>${batch||'A'}</td>
+        <td>${valid?'<span class="badge badge-active">✓</span>':'<span class="badge badge-inactive">✗</span>'}</td>
+      </tr>`;
+    }
+    const validCount = parsedCSVData.filter(r=>r.valid).length;
+    document.getElementById('csvPreview').style.display = 'block';
+    document.getElementById('csvCount').textContent = `${validCount} জন valid`;
+    document.getElementById('importBtn').disabled = validCount === 0;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function importStudents() {
+  const validRows = parsedCSVData.filter(r=>r.valid);
+  if(!validRows.length) return;
+  loading(true);
+  let success=0, skipped=0;
+  for(const row of validRows) {
+    const {error} = await sb.from('students').insert({
+      name:row.name, class:row.class, roll:row.roll,
+      phone:row.phone, batch:row.batch
+    });
+    if(error) skipped++;
+    else success++;
+  }
+  loading(false);
+  showAlert('bulkSuccess', `✅ ${success} জন import হয়েছে। ${skipped} জন skip হয়েছে (duplicate)।`, 'success');
+  setTimeout(()=>{ closeModal('bulkImportModal'); resetCSV(); loadStudents(); }, 2500);
+}
+
+function resetCSV() {
+  parsedCSVData = [];
+  document.getElementById('csvFile').value = '';
+  document.getElementById('csvPreview').style.display = 'none';
+  document.getElementById('importBtn').disabled = true;
+}
+
+function downloadTemplate() {
+  const csv = `নাম,ক্লাস,রোল,মোবাইল,ব্যাচ\nরাহেলা বেগম,6,1,01711000001,A\nকরিম হোসেন,7,2,01711000002,B\nসুমাইয়া আক্তার,8,3,01711000003,A`;
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='students_template.csv'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ── ADMIN LOGIN ──
@@ -629,14 +748,15 @@ async function loadDashboard() {
   document.getElementById('totalResults').textContent = r.count||0;
 
   const {data:recent} = await sb.from('results')
-    .select('*, students(name,class,roll), exams(title)')
+    .select('*, students(name,class,roll,batch), exams(title,batch)')
     .order('submitted_at',{ascending:false}).limit(10);
   const wrap = document.getElementById('recentResultsTable');
   if(!recent||!recent.length){wrap.innerHTML='<p style="color:var(--text-muted);padding:1rem">কোনো ফলাফল নেই</p>';return;}
-  wrap.innerHTML = `<table><thead><tr><th>শিক্ষার্থী</th><th>ক্লাস</th><th>রোল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th><th>তারিখ</th></tr></thead>
+  wrap.innerHTML = `<table><thead><tr><th>শিক্ষার্থী</th><th>ক্লাস</th><th>ব্যাচ</th><th>রোল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th><th>তারিখ</th></tr></thead>
   <tbody>${recent.map(r=>`<tr>
     <td>${r.students?.name||'-'}</td>
     <td><span class="badge badge-class">${r.students?.class||'-'}</span></td>
+    <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#FCD34D">Batch ${r.students?.batch||'-'}</span></td>
     <td>${r.students?.roll||'-'}</td>
     <td>${r.exams?.title||'-'}</td>
     <td><strong>${r.score}/${r.total_questions}</strong></td>
@@ -743,10 +863,10 @@ async function deleteExam(id) {
 
 // ── QUESTIONS ──
 async function loadQExamList() {
-  const {data} = await sb.from('exams').select('id,title,class').order('created_at',{ascending:false});
+  const {data} = await sb.from('exams').select('id,title,class,batch').order('created_at',{ascending:false});
   const sel = document.getElementById('qExamFilter');
   sel.innerHTML = '<option value="">পরীক্ষা বেছে নিন</option>';
-  (data||[]).forEach(e=>{ sel.innerHTML += `<option value="${e.id}">${e.title} (ক্লাস ${e.class})</option>`; });
+  (data||[]).forEach(e=>{ sel.innerHTML += `<option value="${e.id}">${e.title} (ক্লাস ${e.class}, Batch ${e.batch||'A'})</option>`; });
 }
 
 async function loadQuestions() {
@@ -805,29 +925,30 @@ async function deleteQuestion(id) {
 
 // ── RESULTS ──
 async function loadResultFilters() {
-  const {data} = await sb.from('exams').select('id,title,class').order('created_at',{ascending:false});
+  const {data} = await sb.from('exams').select('id,title,class,batch').order('created_at',{ascending:false});
   const sel = document.getElementById('resultExamFilter');
   sel.innerHTML = '<option value="">সব পরীক্ষা</option>';
-  (data||[]).forEach(e=>{ sel.innerHTML += `<option value="${e.id}">${e.title} (ক্লাস ${e.class})</option>`; });
+  (data||[]).forEach(e=>{ sel.innerHTML += `<option value="${e.id}">${e.title} (ক্লাস ${e.class}, Batch ${e.batch||'A'})</option>`; });
   loadResults();
 }
 
 async function loadResults() {
   const examId = document.getElementById('resultExamFilter').value;
   const cls = document.getElementById('resultClassFilter').value;
-  let q = sb.from('results').select('*, students(name,class,roll), exams(title)').order('submitted_at',{ascending:false}).limit(100);
+  let q = sb.from('results').select('*, students(name,class,roll,batch), exams(title,batch)').order('submitted_at',{ascending:false}).limit(100);
   if(examId) q = q.eq('exam_id',examId);
   const {data} = await q;
   let rows = data||[];
   if(cls) rows = rows.filter(r=>r.students?.class===cls);
+  const sorted = rows.sort((a,b)=>b.score-a.score);
   const wrap = document.getElementById('resultsTable');
   if(!rows.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো ফলাফল নেই</p>';return;}
-  const sorted = rows.sort((a,b)=>b.score-a.score);
-  wrap.innerHTML = `<table><thead><tr><th>#</th><th>নাম</th><th>ক্লাস</th><th>রোল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th><th>তারিখ</th></tr></thead>
+  wrap.innerHTML = `<table><thead><tr><th>#</th><th>নাম</th><th>ক্লাস</th><th>ব্যাচ</th><th>রোল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th><th>তারিখ</th></tr></thead>
   <tbody>${sorted.map((r,i)=>`<tr>
     <td>${i+1}</td>
     <td>${r.students?.name||'-'}</td>
     <td><span class="badge badge-class">${r.students?.class||'-'}</span></td>
+    <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#FCD34D">Batch ${r.students?.batch||'-'}</span></td>
     <td>${r.students?.roll||'-'}</td>
     <td style="font-size:0.8rem">${r.exams?.title||'-'}</td>
     <td><strong>${r.score}/${r.total_questions}</strong></td>
