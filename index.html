@@ -886,9 +886,11 @@ function logout() {
 async function loadExams() {
   const grid = document.getElementById('examGrid');
   grid.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>লোড হচ্ছে...</p></div>';
-  const now = new Date().toISOString();
   const { data: exams } = await sb.from('exams')
-    .select('*').eq('class', currentStudent.class).eq('is_active', true)
+    .select('*')
+    .eq('class', currentStudent.class)
+    .eq('batch', currentStudent.batch)
+    .eq('is_active', true)
     .order('week_number');
   const { data: myResults } = await sb.from('results')
     .select('exam_id').eq('student_id', currentStudent.id);
@@ -1097,6 +1099,7 @@ async function loadExamMeritList() {
   const { data } = await sb.from('exams')
     .select('id,title,subject,week_number')
     .eq('class', currentStudent.class)
+    .eq('batch', currentStudent.batch)
     .eq('is_active', true)
     .order('week_number');
   sel.innerHTML = '<option value="">পরীক্ষা বেছে নিন</option>';
@@ -1159,7 +1162,10 @@ async function loadMerit() {
   const wrap = document.getElementById('meritTableWrap');
   wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>লোড হচ্ছে...</p></div>';
   const { data } = await sb.from('monthly_merit')
-    .select('*').eq('class', currentStudent.class).eq('month', month)
+    .select('*')
+    .eq('class', currentStudent.class)
+    .eq('batch', currentStudent.batch)
+    .eq('month', month)
     .order('merit_position');
 
   if (!data || data.length === 0) {
