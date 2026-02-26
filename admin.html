@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel - UBIQUE MCQ</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&family=Baloo+Da+2:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --primary: #4F46E5;
+  --primary-dark: #3730A3;
+  --primary-light: #818CF8;
+  --accent: #F59E0B;
+  --success: #10B981;
+  --danger: #EF4444;
+  --warning: #F97316;
+  --bg: #0F0E1A;
+  --sidebar: #161528;
+  --card: #1E1C35;
+  --border: #2D2B4E;
+  --text: #E8E6FF;
+  --text-muted: #8B89B0;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: 'Hind Siliguri', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; }
+
+/* SIDEBAR */
+.sidebar {
+  width: 240px; min-height: 100vh;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: fixed; top:0; left:0; bottom:0;
+  z-index: 100;
+}
+.sidebar-logo {
+  padding: 1.5rem 1.2rem;
+  font-family: 'Baloo Da 2', cursive;
+  font-size: 1.3rem; font-weight: 800;
+  color: var(--primary-light);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.sidebar-label {
+  font-size: 0.7rem; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; padding: 1rem 1.2rem 0.4rem;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.7rem 1.2rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+.nav-item:hover { background: rgba(79,70,229,0.1); color: var(--text); }
+.nav-item.active { background: rgba(79,70,229,0.15); color: var(--primary-light); border-left-color: var(--primary-light); }
+.nav-icon { font-size: 1.1rem; }
+.sidebar-bottom { margin-top: auto; padding: 1rem 1.2rem; border-top: 1px solid var(--border); }
+.admin-info { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.6rem; }
+.btn-logout-admin {
+  width: 100%; padding: 0.5rem;
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #FCA5A5;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 0.85rem; font-weight: 600;
+  transition: all 0.2s;
+}
+.btn-logout-admin:hover { background: rgba(239,68,68,0.25); }
+
+/* MAIN */
+.main { margin-left: 240px; flex: 1; padding: 2rem; min-height: 100vh; }
+.page-header {
+  margin-bottom: 1.8rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.page-header h1 { font-family: 'Baloo Da 2', cursive; font-size: 1.6rem; font-weight: 700; }
+.page-header p { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.2rem; }
+
+/* CARDS */
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+}
+.stat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.2rem;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.stat-card-val { font-size: 2rem; font-weight: 800; font-family: 'Baloo Da 2', cursive; }
+.stat-card-label { font-size: 0.82rem; color: var(--text-muted); }
+.stat-c1 .stat-card-val { color: var(--primary-light); }
+.stat-c2 .stat-card-val { color: var(--success); }
+.stat-c3 .stat-card-val { color: var(--accent); }
+.stat-c4 .stat-card-val { color: #F472B6; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  background: rgba(79,70,229,0.15);
+  padding: 0.7rem 1rem;
+  text-align: left; font-size: 0.78rem;
+  font-weight: 700; color: var(--primary-light);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+td {
+  padding: 0.65rem 1rem;
+  font-size: 0.88rem;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text);
+}
+tr:hover td { background: rgba(79,70,229,0.06); }
+
+/* FORMS */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.form-group { margin-bottom: 1rem; }
+.form-label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; }
+.form-control {
+  width: 100%; padding: 0.65rem 0.9rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 0.92rem;
+  transition: all 0.2s;
+}
+.form-control:focus { outline: none; border-color: var(--primary-light); background: rgba(79,70,229,0.1); }
+textarea.form-control { min-height: 80px; resize: vertical; }
+
+/* BUTTONS */
+.btn {
+  padding: 0.55rem 1.2rem;
+  border-radius: 10px; border: none;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 0.88rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+}
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: #fff; }
+.btn-primary:hover { box-shadow: 0 4px 12px rgba(79,70,229,0.4); transform: translateY(-1px); }
+.btn-success { background: linear-gradient(135deg, var(--success), #059669); color: #fff; }
+.btn-success:hover { box-shadow: 0 4px 12px rgba(16,185,129,0.4); }
+.btn-danger { background: rgba(239,68,68,0.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+.btn-danger:hover { background: rgba(239,68,68,0.25); }
+.btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
+.btn-ghost:hover { border-color: var(--primary-light); color: var(--primary-light); }
+.btn-sm { padding: 0.3rem 0.75rem; font-size: 0.78rem; }
+
+/* BADGE */
+.badge {
+  display: inline-block; padding: 0.2rem 0.6rem;
+  border-radius: 20px; font-size: 0.72rem; font-weight: 600;
+}
+.badge-active { background: rgba(16,185,129,0.15); color: #34D399; }
+.badge-inactive { background: rgba(239,68,68,0.15); color: #FCA5A5; }
+.badge-class { background: rgba(79,70,229,0.2); color: var(--primary-light); }
+
+/* SECTION TABS */
+.section { display: none; }
+.section.active { display: block; }
+
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; align-items: center; justify-content: center;
+  z-index: 200; padding: 1rem;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--card); border-radius: 20px;
+  padding: 1.8rem; width: 100%; max-width: 560px;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.2rem; color: var(--primary-light); }
+.modal-footer { display: flex; gap: 0.8rem; justify-content: flex-end; margin-top: 1rem; }
+
+/* Q LIST */
+.q-item {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+}
+.q-item-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
+.q-item-text { font-size: 0.9rem; margin-bottom: 0.5rem; }
+.q-item-options { display: grid; grid-template-columns: 1fr 1fr; gap: 0.3rem; font-size: 0.8rem; color: var(--text-muted); }
+.q-correct { color: var(--success); font-weight: 600; }
+
+/* LOGIN */
+.admin-login-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
+}
+.admin-login-card {
+  background: var(--card); border-radius: 20px; padding: 2.5rem;
+  width: 100%; max-width: 380px; border: 1px solid var(--border);
+}
+.admin-login-card h2 {
+  font-family: 'Baloo Da 2', cursive; font-size: 1.5rem;
+  font-weight: 700; margin-bottom: 1.5rem; color: var(--primary-light);
+  text-align: center;
+}
+
+/* LOADING */
+.loading-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  display: none; align-items: center; justify-content: center; z-index: 999;
+}
+.spinner { width: 44px; height: 44px; border: 4px solid rgba(255,255,255,0.15); border-top-color: var(--primary-light); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.alert {
+  padding: 0.7rem 1rem; border-radius: 10px; font-size: 0.88rem;
+  margin-bottom: 1rem; display: none;
+}
+.alert-error { background: rgba(239,68,68,0.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+.alert-success { background: rgba(16,185,129,0.15); color: #34D399; border: 1px solid rgba(16,185,129,0.3); }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<!-- ADMIN LOGIN -->
+<div id="adminLoginWrap" class="admin-login-wrap">
+  <div class="admin-login-card">
+    <h2>🔐 Admin Login</h2>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input class="form-control" id="adminUser" type="text" placeholder="admin">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-control" id="adminPass" type="password" placeholder="••••••••">
+    </div>
+    <div class="alert alert-error" id="adminLoginError"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:0.75rem" onclick="adminLogin()">লগিন করুন</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="adminApp" style="display:none; width:100%; display:none">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">⚡ UBIQUE Admin</div>
+  <div class="sidebar-label">মূল মেনু</div>
+  <div class="nav-item active" onclick="showSection('dashboard',this)"><span class="nav-icon">📊</span> ড্যাশবোর্ড</div>
+  <div class="nav-item" onclick="showSection('students',this)"><span class="nav-icon">👨‍🎓</span> শিক্ষার্থী</div>
+  <div class="nav-item" onclick="showSection('exams',this)"><span class="nav-icon">📋</span> পরীক্ষা</div>
+  <div class="nav-item" onclick="showSection('questions',this)"><span class="nav-icon">❓</span> প্রশ্নসমূহ</div>
+  <div class="nav-item" onclick="showSection('results',this)"><span class="nav-icon">📈</span> ফলাফল</div>
+  <div class="nav-item" onclick="showSection('merit',this)"><span class="nav-icon">🏆</span> মেরিট লিস্ট</div>
+  <div class="sidebar-bottom">
+    <div class="admin-info">Admin হিসেবে লগিন করা আছেন</div>
+    <button class="btn-logout-admin" onclick="adminLogout()">🚪 লগআউট</button>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div class="section active" id="sec-dashboard">
+    <div class="page-header">
+      <div><h1>📊 ড্যাশবোর্ড</h1><p>সামগ্রিক পরিসংখ্যান</p></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card stat-c1"><div class="stat-card-val" id="totalStudents">-</div><div class="stat-card-label">মোট শিক্ষার্থী</div></div>
+      <div class="stat-card stat-c2"><div class="stat-card-val" id="totalExams">-</div><div class="stat-card-label">মোট পরীক্ষা</div></div>
+      <div class="stat-card stat-c3"><div class="stat-card-val" id="totalQuestions">-</div><div class="stat-card-label">মোট প্রশ্ন</div></div>
+      <div class="stat-card stat-c4"><div class="stat-card-val" id="totalResults">-</div><div class="stat-card-label">মোট পরীক্ষার্থী</div></div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;color:var(--primary-light)">📋 সাম্প্রতিক ফলাফল</h3>
+      <div class="table-wrap" id="recentResultsTable">লোড হচ্ছে...</div>
+    </div>
+  </div>
+
+  <!-- STUDENTS -->
+  <div class="section" id="sec-students">
+    <div class="page-header">
+      <div><h1>👨‍🎓 শিক্ষার্থী</h1><p>সকল শিক্ষার্থীর তথ্য</p></div>
+      <button class="btn btn-primary" onclick="openModal('addStudentModal')">+ নতুন শিক্ষার্থী</button>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap">
+        <select class="form-control" id="filterClass" style="width:auto" onchange="loadStudents()">
+          <option value="">সব ক্লাস</option>
+          <option value="6">ক্লাস ৬</option><option value="7">ক্লাস ৭</option>
+          <option value="8">ক্লাস ৮</option><option value="9">ক্লাস ৯</option>
+          <option value="10">ক্লাস ১০</option>
+        </select>
+      </div>
+      <div class="table-wrap" id="studentsTable">লোড হচ্ছে...</div>
+    </div>
+  </div>
+
+  <!-- EXAMS -->
+  <div class="section" id="sec-exams">
+    <div class="page-header">
+      <div><h1>📋 পরীক্ষা</h1><p>পরীক্ষা তৈরি ও পরিচালনা</p></div>
+      <button class="btn btn-primary" onclick="openModal('addExamModal')">+ নতুন পরীক্ষা</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap" id="examsTable">লোড হচ্ছে...</div>
+    </div>
+  </div>
+
+  <!-- QUESTIONS -->
+  <div class="section" id="sec-questions">
+    <div class="page-header">
+      <div><h1>❓ প্রশ্নসমূহ</h1><p>পরীক্ষা অনুযায়ী প্রশ্ন দেখুন ও যোগ করুন</p></div>
+    </div>
+    <div class="card" style="margin-bottom:1rem">
+      <div style="display:flex;gap:0.8rem;align-items:center;flex-wrap:wrap">
+        <select class="form-control" id="qExamFilter" style="width:auto" onchange="loadQuestions()">
+          <option value="">পরীক্ষা বেছে নিন</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="addQBtn" onclick="openAddQuestion()" style="display:none">+ প্রশ্ন যোগ</button>
+      </div>
+    </div>
+    <div id="questionsList">পরীক্ষা বেছে নিন</div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="section" id="sec-results">
+    <div class="page-header">
+      <div><h1>📈 ফলাফল</h1><p>সকল পরীক্ষার ফলাফল</p></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap">
+        <select class="form-control" id="resultExamFilter" style="width:auto" onchange="loadResults()">
+          <option value="">সব পরীক্ষা</option>
+        </select>
+        <select class="form-control" id="resultClassFilter" style="width:auto" onchange="loadResults()">
+          <option value="">সব ক্লাস</option>
+          <option value="6">ক্লাস ৬</option><option value="7">ক্লাস ৭</option>
+          <option value="8">ক্লাস ৮</option><option value="9">ক্লাস ৯</option>
+          <option value="10">ক্লাস ১০</option>
+        </select>
+      </div>
+      <div class="table-wrap" id="resultsTable">লোড হচ্ছে...</div>
+    </div>
+  </div>
+
+  <!-- MERIT -->
+  <div class="section" id="sec-merit">
+    <div class="page-header">
+      <div><h1>🏆 মেরিট লিস্ট</h1><p>মাসিক মেরিট পজিশন</p></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:0.8rem;margin-bottom:1rem;flex-wrap:wrap">
+        <select class="form-control" id="meritClassFilter" style="width:auto" onchange="loadAdminMerit()">
+          <option value="6">ক্লাস ৬</option><option value="7">ক্লাস ৭</option>
+          <option value="8">ক্লাস ৮</option><option value="9">ক্লাস ৯</option>
+          <option value="10">ক্লাস ১০</option>
+        </select>
+        <select class="form-control" id="meritMonthFilter" style="width:auto" onchange="loadAdminMerit()">
+          <option value="February 2025">ফেব্রুয়ারি ২০২৫</option>
+          <option value="March 2025">মার্চ ২০২৫</option>
+        </select>
+      </div>
+      <div class="table-wrap" id="meritTable">লোড হচ্ছে...</div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- Add Student -->
+<div class="modal-overlay" id="addStudentModal">
+  <div class="modal">
+    <h3>➕ নতুন শিক্ষার্থী যোগ করুন</h3>
+    <div class="alert alert-error" id="addStudentError"></div>
+    <div class="alert alert-success" id="addStudentSuccess"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">নাম</label>
+        <input class="form-control" id="sName" placeholder="শিক্ষার্থীর নাম">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ক্লাস</label>
+        <select class="form-control" id="sClass">
+          <option value="6">৬</option><option value="7">৭</option>
+          <option value="8">৮</option><option value="9">৯</option><option value="10">১০</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">রোল</label>
+        <input class="form-control" id="sRoll" type="number" placeholder="রোল নম্বর">
+      </div>
+      <div class="form-group">
+        <label class="form-label">মোবাইল</label>
+        <input class="form-control" id="sPhone" placeholder="01XXXXXXXXX">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addStudentModal')">বাতিল</button>
+      <button class="btn btn-success" onclick="addStudent()">✓ যোগ করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Exam -->
+<div class="modal-overlay" id="addExamModal">
+  <div class="modal">
+    <h3>📋 নতুন পরীক্ষা তৈরি করুন</h3>
+    <div class="alert alert-error" id="addExamError"></div>
+    <div class="form-row">
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">পরীক্ষার শিরোনাম</label>
+        <input class="form-control" id="eTitle" placeholder="যেমন: সপ্তাহ ১ - গণিত পরীক্ষা">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">বিষয়</label>
+        <input class="form-control" id="eSubject" placeholder="গণিত, বিজ্ঞান...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ক্লাস</label>
+        <select class="form-control" id="eClass">
+          <option value="6">৬</option><option value="7">৭</option>
+          <option value="8">৮</option><option value="9">৯</option><option value="10">১০</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">সপ্তাহ নম্বর</label>
+        <input class="form-control" id="eWeek" type="number" value="1" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">মাস</label>
+        <input class="form-control" id="eMonth" placeholder="February 2025">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">সময় (মিনিট)</label>
+        <input class="form-control" id="eDuration" type="number" value="30" min="5">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">শুরুর তারিখ</label>
+        <input class="form-control" id="eStart" type="datetime-local">
+      </div>
+      <div class="form-group">
+        <label class="form-label">শেষ তারিখ</label>
+        <input class="form-control" id="eEnd" type="datetime-local">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addExamModal')">বাতিল</button>
+      <button class="btn btn-success" onclick="addExam()">✓ তৈরি করুন</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Question -->
+<div class="modal-overlay" id="addQuestionModal">
+  <div class="modal">
+    <h3>❓ নতুন প্রশ্ন যোগ করুন</h3>
+    <div class="alert alert-error" id="addQError"></div>
+    <div class="form-group">
+      <label class="form-label">প্রশ্ন (KaTeX ব্যবহার করতে পারেন: \frac{1}{2})</label>
+      <textarea class="form-control" id="qText" placeholder="প্রশ্ন লিখুন..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">অপশন A</label>
+        <input class="form-control" id="qA" placeholder="অপশন A">
+      </div>
+      <div class="form-group">
+        <label class="form-label">অপশন B</label>
+        <input class="form-control" id="qB" placeholder="অপশন B">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">অপশন C</label>
+        <input class="form-control" id="qC" placeholder="অপশন C">
+      </div>
+      <div class="form-group">
+        <label class="form-label">অপশন D</label>
+        <input class="form-control" id="qD" placeholder="অপশন D">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">সঠিক উত্তর</label>
+        <select class="form-control" id="qCorrect">
+          <option value="a">A</option><option value="b">B</option>
+          <option value="c">C</option><option value="d">D</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">প্রশ্নের ক্রম</label>
+        <input class="form-control" id="qOrder" type="number" value="1" min="1">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('addQuestionModal')">বাতিল</button>
+      <button class="btn btn-success" onclick="addQuestion()">✓ যোগ করুন</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://cjeaahqwcejxqfiascpz.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqZWFhaHF3Y2VqeHFmaWFzY3B6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIxMjA1NjcsImV4cCI6MjA4NzY5NjU2N30.tNRinQBmUfnwTV_Qh6G6gwaKThXG1AZW2v-t2qWqEK8';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let selectedExamForQ = null;
+
+function loading(s) { document.getElementById('loadingOverlay').style.display = s?'flex':'none'; }
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function showAlert(id, msg, type='error') {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = msg; el.style.display='block'; el.className=`alert alert-${type}`;
+  setTimeout(()=>{ el.style.display='none'; }, 3000);
+}
+
+// ── ADMIN LOGIN ──
+async function adminLogin() {
+  const user = document.getElementById('adminUser').value.trim();
+  const pass = document.getElementById('adminPass').value.trim();
+  if(!user||!pass){showAlert('adminLoginError','সব তথ্য পূরণ করুন');return;}
+  loading(true);
+  const {data} = await sb.from('admins').select('*').eq('username',user).eq('password_hash',pass).single();
+  loading(false);
+  if(!data){showAlert('adminLoginError','ভুল username অথবা password');return;}
+  sessionStorage.setItem('adminLoggedIn','true');
+  document.getElementById('adminLoginWrap').style.display='none';
+  document.getElementById('adminApp').style.display='flex';
+  loadDashboard();
+}
+function adminLogout(){
+  sessionStorage.removeItem('adminLoggedIn');
+  location.reload();
+}
+
+// ── NAVIGATION ──
+function showSection(name, el) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sec-'+name).classList.add('active');
+  el.classList.add('active');
+  const loaders = {students:loadStudents,exams:loadExams,questions:loadQExamList,results:loadResultFilters,merit:loadAdminMerit};
+  if(loaders[name]) loaders[name]();
+}
+
+// ── DASHBOARD ──
+async function loadDashboard() {
+  const [s,e,q,r] = await Promise.all([
+    sb.from('students').select('id',{count:'exact',head:true}),
+    sb.from('exams').select('id',{count:'exact',head:true}),
+    sb.from('questions').select('id',{count:'exact',head:true}),
+    sb.from('results').select('id',{count:'exact',head:true})
+  ]);
+  document.getElementById('totalStudents').textContent = s.count||0;
+  document.getElementById('totalExams').textContent = e.count||0;
+  document.getElementById('totalQuestions').textContent = q.count||0;
+  document.getElementById('totalResults').textContent = r.count||0;
+
+  const {data:recent} = await sb.from('results')
+    .select('*, students(name,class,roll), exams(title)')
+    .order('submitted_at',{ascending:false}).limit(10);
+  const wrap = document.getElementById('recentResultsTable');
+  if(!recent||!recent.length){wrap.innerHTML='<p style="color:var(--text-muted);padding:1rem">কোনো ফলাফল নেই</p>';return;}
+  wrap.innerHTML = `<table><thead><tr><th>শিক্ষার্থী</th><th>ক্লাস</th><th>রোল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th><th>তারিখ</th></tr></thead>
+  <tbody>${recent.map(r=>`<tr>
+    <td>${r.students?.name||'-'}</td>
+    <td><span class="badge badge-class">${r.students?.class||'-'}</span></td>
+    <td>${r.students?.roll||'-'}</td>
+    <td>${r.exams?.title||'-'}</td>
+    <td><strong>${r.score}/${r.total_questions}</strong></td>
+    <td>${Math.round(r.score/r.total_questions*100)}%</td>
+    <td>${new Date(r.submitted_at).toLocaleDateString('bn-BD')}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+// ── STUDENTS ──
+async function loadStudents() {
+  const cls = document.getElementById('filterClass').value;
+  let q = sb.from('students').select('*').order('class').order('roll');
+  if(cls) q = q.eq('class',cls);
+  const {data} = await q;
+  const wrap = document.getElementById('studentsTable');
+  if(!data||!data.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো শিক্ষার্থী নেই</p>';return;}
+  wrap.innerHTML = `<table><thead><tr><th>নাম</th><th>ক্লাস</th><th>রোল</th><th>মোবাইল</th><th>যোগদান</th><th>মুছুন</th></tr></thead>
+  <tbody>${data.map(s=>`<tr>
+    <td><strong>${s.name}</strong></td>
+    <td><span class="badge badge-class">ক্লাস ${s.class}</span></td>
+    <td>${s.roll}</td>
+    <td>${s.phone}</td>
+    <td>${new Date(s.created_at).toLocaleDateString('bn-BD')}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}','${s.name}')">🗑</button></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+async function addStudent() {
+  const name=document.getElementById('sName').value.trim();
+  const cls=document.getElementById('sClass').value;
+  const roll=document.getElementById('sRoll').value.trim();
+  const phone=document.getElementById('sPhone').value.trim();
+  if(!name||!roll||!phone){showAlert('addStudentError','সব তথ্য পূরণ করুন');return;}
+  loading(true);
+  const {error} = await sb.from('students').insert({name,class:cls,roll,phone});
+  loading(false);
+  if(error){showAlert('addStudentError','ত্রুটি: '+error.message);return;}
+  showAlert('addStudentSuccess','শিক্ষার্থী যোগ হয়েছে!','success');
+  document.getElementById('sName').value='';document.getElementById('sRoll').value='';document.getElementById('sPhone').value='';
+  setTimeout(()=>closeModal('addStudentModal'),1500);
+  loadStudents();
+}
+
+async function deleteStudent(id,name) {
+  if(!confirm(`"${name}" কে মুছে ফেলবেন?`)) return;
+  loading(true);
+  await sb.from('students').delete().eq('id',id);
+  loading(false);
+  loadStudents();
+}
+
+// ── EXAMS ──
+async function loadExams() {
+  const {data} = await sb.from('exams').select('*').order('created_at',{ascending:false});
+  const wrap = document.getElementById('examsTable');
+  if(!data||!data.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো পরীক্ষা নেই</p>';return;}
+  wrap.innerHTML = `<table><thead><tr><th>শিরোনাম</th><th>বিষয়</th><th>ক্লাস</th><th>সপ্তাহ</th><th>সময়</th><th>শেষ তারিখ</th><th>অবস্থা</th><th>কাজ</th></tr></thead>
+  <tbody>${data.map(e=>{
+    const expired = new Date(e.end_date)<new Date();
+    return `<tr>
+      <td><strong>${e.title}</strong></td>
+      <td>${e.subject}</td>
+      <td><span class="badge badge-class">${e.class}</span></td>
+      <td>সপ্তাহ ${e.week_number}</td>
+      <td>${e.duration_minutes} মিনিট</td>
+      <td>${new Date(e.end_date).toLocaleDateString('bn-BD')}</td>
+      <td><span class="badge ${expired?'badge-inactive':'badge-active'}">${expired?'মেয়াদ শেষ':'সক্রিয়'}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteExam('${e.id}')">🗑</button></td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+async function addExam() {
+  const title=document.getElementById('eTitle').value.trim();
+  const subject=document.getElementById('eSubject').value.trim();
+  const cls=document.getElementById('eClass').value;
+  const week=parseInt(document.getElementById('eWeek').value);
+  const month=document.getElementById('eMonth').value.trim();
+  const dur=parseInt(document.getElementById('eDuration').value);
+  const start=document.getElementById('eStart').value;
+  const end=document.getElementById('eEnd').value;
+  if(!title||!subject||!month||!start||!end){showAlert('addExamError','সব তথ্য পূরণ করুন');return;}
+  loading(true);
+  const {error} = await sb.from('exams').insert({title,subject,class:cls,week_number:week,month,duration_minutes:dur,start_date:new Date(start).toISOString(),end_date:new Date(end).toISOString()});
+  loading(false);
+  if(error){showAlert('addExamError','ত্রুটি: '+error.message);return;}
+  closeModal('addExamModal');
+  loadExams();
+}
+
+async function deleteExam(id) {
+  if(!confirm('এই পরীক্ষা মুছে ফেলবেন? সব প্রশ্নও মুছে যাবে।')) return;
+  loading(true);
+  await sb.from('exams').delete().eq('id',id);
+  loading(false);
+  loadExams();
+}
+
+// ── QUESTIONS ──
+async function loadQExamList() {
+  const {data} = await sb.from('exams').select('id,title,class').order('created_at',{ascending:false});
+  const sel = document.getElementById('qExamFilter');
+  sel.innerHTML = '<option value="">পরীক্ষা বেছে নিন</option>';
+  (data||[]).forEach(e=>{ sel.innerHTML += `<option value="${e.id}">${e.title} (ক্লাস ${e.class})</option>`; });
+}
+
+async function loadQuestions() {
+  const examId = document.getElementById('qExamFilter').value;
+  document.getElementById('addQBtn').style.display = examId?'inline-flex':'none';
+  selectedExamForQ = examId;
+  if(!examId){document.getElementById('questionsList').innerHTML='<p style="color:var(--text-muted)">পরীক্ষা বেছে নিন</p>';return;}
+  const {data} = await sb.from('questions').select('*').eq('exam_id',examId).order('question_order');
+  const wrap = document.getElementById('questionsList');
+  if(!data||!data.length){wrap.innerHTML='<div class="card"><p style="color:var(--text-muted)">কোনো প্রশ্ন নেই। প্রশ্ন যোগ করুন।</p></div>';return;}
+  wrap.innerHTML = data.map((q,i)=>`
+    <div class="q-item">
+      <div class="q-item-header">
+        <span style="font-size:0.78rem;color:var(--primary-light);font-weight:600">প্রশ্ন ${i+1}</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuestion('${q.id}')">🗑 মুছুন</button>
+      </div>
+      <div class="q-item-text">${q.question_text}</div>
+      <div class="q-item-options">
+        <span class="${q.correct_answer==='a'?'q-correct':''}">A: ${q.option_a}</span>
+        <span class="${q.correct_answer==='b'?'q-correct':''}">B: ${q.option_b}</span>
+        <span class="${q.correct_answer==='c'?'q-correct':''}">C: ${q.option_c}</span>
+        <span class="${q.correct_answer==='d'?'q-correct':''}">D: ${q.option_d}</span>
+      </div>
+    </div>`).join('');
+}
+
+function openAddQuestion() {
+  if(!selectedExamForQ){alert('আগে পরীক্ষা বেছে নিন');return;}
+  openModal('addQuestionModal');
+}
+
+async function addQuestion() {
+  const text=document.getElementById('qText').value.trim();
+  const a=document.getElementById('qA').value.trim();
+  const b=document.getElementById('qB').value.trim();
+  const c=document.getElementById('qC').value.trim();
+  const d=document.getElementById('qD').value.trim();
+  const correct=document.getElementById('qCorrect').value;
+  const order=parseInt(document.getElementById('qOrder').value)||1;
+  if(!text||!a||!b||!c||!d){showAlert('addQError','সব ঘর পূরণ করুন');return;}
+  loading(true);
+  const {error} = await sb.from('questions').insert({exam_id:selectedExamForQ,question_text:text,option_a:a,option_b:b,option_c:c,option_d:d,correct_answer:correct,question_order:order});
+  loading(false);
+  if(error){showAlert('addQError','ত্রুটি: '+error.message);return;}
+  document.getElementById('qText').value='';document.getElementById('qA').value='';
+  document.getElementById('qB').value='';document.getElementById('qC').value='';document.getElementById('qD').value='';
+  closeModal('addQuestionModal');
+  loadQuestions();
+}
+
+async function deleteQuestion(id) {
+  if(!confirm('এই প্রশ্ন মুছে ফেলবেন?')) return;
+  await sb.from('questions').delete().eq('id',id);
+  loadQuestions();
+}
+
+// ── RESULTS ──
+async function loadResultFilters() {
+  const {data} = await sb.from('exams').select('id,title,class').order('created_at',{ascending:false});
+  const sel = document.getElementById('resultExamFilter');
+  sel.innerHTML = '<option value="">সব পরীক্ষা</option>';
+  (data||[]).forEach(e=>{ sel.innerHTML += `<option value="${e.id}">${e.title} (ক্লাস ${e.class})</option>`; });
+  loadResults();
+}
+
+async function loadResults() {
+  const examId = document.getElementById('resultExamFilter').value;
+  const cls = document.getElementById('resultClassFilter').value;
+  let q = sb.from('results').select('*, students(name,class,roll), exams(title)').order('submitted_at',{ascending:false}).limit(100);
+  if(examId) q = q.eq('exam_id',examId);
+  const {data} = await q;
+  let rows = data||[];
+  if(cls) rows = rows.filter(r=>r.students?.class===cls);
+  const wrap = document.getElementById('resultsTable');
+  if(!rows.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো ফলাফল নেই</p>';return;}
+  const sorted = rows.sort((a,b)=>b.score-a.score);
+  wrap.innerHTML = `<table><thead><tr><th>#</th><th>নাম</th><th>ক্লাস</th><th>রোল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th><th>তারিখ</th></tr></thead>
+  <tbody>${sorted.map((r,i)=>`<tr>
+    <td>${i+1}</td>
+    <td>${r.students?.name||'-'}</td>
+    <td><span class="badge badge-class">${r.students?.class||'-'}</span></td>
+    <td>${r.students?.roll||'-'}</td>
+    <td style="font-size:0.8rem">${r.exams?.title||'-'}</td>
+    <td><strong>${r.score}/${r.total_questions}</strong></td>
+    <td>${Math.round(r.score/r.total_questions*100)}%</td>
+    <td>${new Date(r.submitted_at).toLocaleDateString('bn-BD')}</td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+// ── MERIT ──
+async function loadAdminMerit() {
+  const cls = document.getElementById('meritClassFilter').value;
+  const month = document.getElementById('meritMonthFilter').value;
+  const {data} = await sb.from('monthly_merit').select('*').eq('class',cls).eq('month',month).order('merit_position');
+  const wrap = document.getElementById('meritTable');
+  if(!data||!data.length){wrap.innerHTML='<p style="padding:1rem;color:var(--text-muted)">কোনো তথ্য নেই</p>';return;}
+  wrap.innerHTML = `<table><thead><tr><th>স্থান</th><th>নাম</th><th>রোল</th><th>মোবাইল</th><th>পরীক্ষা</th><th>নম্বর</th><th>শতাংশ</th></tr></thead>
+  <tbody>${data.map(r=>`<tr>
+    <td><strong>${r.merit_position}</strong></td>
+    <td>${r.name}</td>
+    <td>${r.roll}</td>
+    <td>${r.phone||'-'}</td>
+    <td>${r.exams_taken}</td>
+    <td>${r.total_score}/${r.total_possible}</td>
+    <td><strong>${r.percentage}%</strong></td>
+  </tr>`).join('')}</tbody></table>`;
+}
+
+// INIT
+window.addEventListener('load', () => {
+  if(sessionStorage.getItem('adminLoggedIn')==='true'){
+    document.getElementById('adminLoginWrap').style.display='none';
+    document.getElementById('adminApp').style.display='flex';
+    loadDashboard();
+  }
+});
+</script>
+</body>
+</html>
