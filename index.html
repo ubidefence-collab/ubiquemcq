@@ -415,7 +415,71 @@ body {
 .q-dot.answered { background: #EDE9FE; color: var(--primary); border-color: var(--primary-light); }
 .q-dot.current { border-color: var(--primary); background: var(--primary); color: #fff; }
 
-/* ── RESULT PAGE ── */
+/* ── QUESTION TYPE BADGE ── */
+.q-type-badge {
+  display: inline-block;
+  padding: 0.18rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.qtype-mcq { background: #EDE9FE; color: var(--primary); }
+.qtype-truefalse { background: #FEF3C7; color: #D97706; }
+.qtype-fitb { background: #DCFCE7; color: #16A34A; }
+
+/* ── TRUE / FALSE ── */
+.tf-options { display: flex; gap: 1rem; margin-top: 0.5rem; }
+.tf-btn {
+  flex: 1;
+  padding: 1rem;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+}
+.tf-btn:hover { border-color: var(--primary-light); background: #F5F3FF; }
+.tf-btn.selected-true { border-color: var(--success); background: #ECFDF5; color: var(--success); }
+.tf-btn.selected-false { border-color: var(--danger); background: #FEF2F2; color: var(--danger); }
+
+/* ── FILL IN THE BLANK ── */
+.fitb-wrap { margin-top: 0.5rem; }
+.fitb-sentence {
+  font-size: 1.05rem;
+  line-height: 2;
+  margin-bottom: 1rem;
+}
+.fitb-blank {
+  display: inline-block;
+  min-width: 120px;
+  border-bottom: 2px solid var(--primary);
+  padding: 0 0.5rem;
+  color: var(--primary);
+  font-weight: 700;
+  text-align: center;
+}
+.fitb-dropdown {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  font-family: 'Hind Siliguri', sans-serif;
+  font-size: 1rem;
+  color: var(--text);
+  background: #FAFBFF;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 0.5rem;
+}
+.fitb-dropdown:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
+.fitb-dropdown.answered { border-color: var(--primary); background: #EDE9FE; color: var(--primary-dark); font-weight: 600; }
 .result-wrap { max-width: 600px; margin: 0 auto; padding: 2rem 1.5rem; }
 .result-card {
   background: #fff;
@@ -1049,27 +1113,91 @@ function startTimerFromSaved(exam) {
 function renderQuestion() {
   const q = questions[currentQ];
   const total = questions.length;
+  const type = q.question_type || 'mcq';
+
   document.getElementById('qNumber').textContent = `প্রশ্ন ${currentQ+1} / ${total}`;
   document.getElementById('progressBar').style.width = `${((currentQ+1)/total)*100}%`;
 
-  // Render question with KaTeX
-  setMathContent(document.getElementById('qText'), q.question_text);
+  // Question type badge
+  const typeBadge = {
+    mcq: '<span style="background:#EDE9FE;color:#7C3AED;padding:0.15rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:0.5rem;display:inline-block">MCQ</span>',
+    truefalse: '<span style="background:#DCFCE7;color:#15803D;padding:0.15rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:0.5rem;display:inline-block">সত্য / মিথ্যা</span>',
+    fillinblank: '<span style="background:#FEF3C7;color:#B45309;padding:0.15rem 0.6rem;border-radius:20px;font-size:0.72rem;font-weight:700;margin-bottom:0.5rem;display:inline-block">শূন্যস্থান পূরণ</span>'
+  };
 
-  const opts = [
-    {key:'a', text: q.option_a},
-    {key:'b', text: q.option_b},
-    {key:'c', text: q.option_c},
-    {key:'d', text: q.option_d}
-  ];
+  // Render question text
+  const qTextEl = document.getElementById('qText');
+  qTextEl.innerHTML = typeBadge[type] || typeBadge.mcq;
+  const textSpan = document.createElement('div');
+  setMathContent(textSpan, q.question_text);
+  qTextEl.appendChild(textSpan);
 
-  document.getElementById('optionsWrap').innerHTML = opts.map(o => `
-    <label class="option-label ${answers[q.id]===o.key?'selected':''}" onclick="selectAnswer('${q.id}','${o.key}',this)">
-      <input type="radio" name="q" value="${o.key}" ${answers[q.id]===o.key?'checked':''}>
-      <span class="option-key">${o.key.toUpperCase()}</span>
-      <span class="opt-text" data-raw="${encodeURIComponent(o.text)}">${o.text}</span>
-    </label>`).join('');
+  const optWrap = document.getElementById('optionsWrap');
 
-  // Render math in options
+  if (type === 'mcq') {
+    // ── MCQ: ৪টি অপশন ──
+    const opts = [
+      {key:'a', text: q.option_a},
+      {key:'b', text: q.option_b},
+      {key:'c', text: q.option_c},
+      {key:'d', text: q.option_d}
+    ];
+    optWrap.innerHTML = opts.map(o => `
+      <label class="option-label ${answers[q.id]===o.key?'selected':''}" onclick="selectAnswer('${q.id}','${o.key}',this)">
+        <input type="radio" name="q" value="${o.key}" ${answers[q.id]===o.key?'checked':''}>
+        <span class="option-key">${o.key.toUpperCase()}</span>
+        <span class="opt-text" data-raw="${encodeURIComponent(o.text)}">${o.text}</span>
+      </label>`).join('');
+
+  } else if (type === 'truefalse') {
+    // ── True/False: ২টি বড় বাটন ──
+    // option_a = 'সত্য', option_b = 'মিথ্যা', correct_answer = 'সত্য' বা 'মিথ্যা'
+    const tfOpts = [
+      { val: q.option_a || 'সত্য', icon: '✅', colorSel: '#DCFCE7', textSel: '#15803D', borderSel: '#86EFAC' },
+      { val: q.option_b || 'মিথ্যা', icon: '❌', colorSel: '#FEF2F2', textSel: '#DC2626', borderSel: '#FCA5A5' }
+    ];
+    optWrap.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;margin-top:0.5rem">
+        ${tfOpts.map(o => {
+          const sel = answers[q.id] === o.val;
+          return `<label class="option-label tf-option ${sel?'selected':''}"
+            onclick="selectTF('${q.id}','${encodeURIComponent(o.val)}',this,'${encodeURIComponent(o.colorSel)}','${encodeURIComponent(o.textSel)}','${encodeURIComponent(o.borderSel)}')"
+            style="justify-content:center;padding:1.2rem;flex-direction:column;gap:0.4rem;text-align:center;
+              background:${sel?o.colorSel:'#fff'};color:${sel?o.textSel:'var(--text)'};border-color:${sel?o.borderSel:'var(--border)'};cursor:pointer">
+            <input type="radio" name="q" value="${o.val}" ${sel?'checked':''} style="display:none">
+            <span style="font-size:2rem">${o.icon}</span>
+            <span style="font-weight:700;font-size:1rem">${o.val}</span>
+          </label>`;
+        }).join('')}
+      </div>`;
+
+  } else if (type === 'fitb') {
+    // ── Fill in the Blank: বাটন থেকে বেছে নাও ──
+    const opts = [q.option_a, q.option_b, q.option_c, q.option_d].filter(Boolean);
+    const selected = answers[q.id] || '';
+    optWrap.innerHTML = `
+      <div style="margin-top:0.8rem">
+        <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.8rem">নিচের তালিকা থেকে শূন্যস্থানের সঠিক উত্তর বেছে নাও:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:0.6rem">
+          ${opts.map(opt => {
+            const sel = selected === opt;
+            return `<button class="blank-option"
+              onclick="selectFitb('${q.id}','${encodeURIComponent(opt)}',this)"
+              style="padding:0.6rem 1.3rem;border:2px solid ${sel?'var(--primary)':'var(--border)'};border-radius:10px;
+                background:${sel?'var(--primary)':'#fff'};color:${sel?'#fff':'var(--text)'};
+                font-family:inherit;font-size:0.95rem;font-weight:600;cursor:pointer;transition:all 0.2s">
+              <span class="opt-text" data-raw="${encodeURIComponent(opt)}">${opt}</span>
+            </button>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:1rem;padding:0.8rem 1rem;background:var(--bg);border-radius:10px;border:2px dashed var(--border)">
+          <span style="font-size:0.85rem;color:var(--text-muted)">তোমার উত্তর: </span>
+          <span id="blankAnswer" style="font-weight:700;color:var(--primary)">${selected || '—'}</span>
+        </div>
+      </div>`;
+  }
+
+  // Math render
   setTimeout(() => {
     document.querySelectorAll('.opt-text').forEach(el => {
       const raw = decodeURIComponent(el.getAttribute('data-raw'));
@@ -1084,21 +1212,63 @@ function renderQuestion() {
 }
 
 function updateDots() {
-  document.getElementById('qDots').innerHTML = questions.map((q,i) =>
-    `<div class="q-dot ${i===currentQ?'current':answers[q.id]?'answered':''}" onclick="goToQ(${i})">${i+1}</div>`
-  ).join('');
+  document.getElementById('qDots').innerHTML = questions.map((q,i) => {
+    const type = q.question_type || 'mcq';
+    const typeIcon = type==='truefalse'?'T/F':type==='fitb'?'Fill':i+1;
+    return `<div class="q-dot ${i===currentQ?'current':answers[q.id]?'answered':''}" onclick="goToQ(${i})"
+      title="${type==='truefalse'?'সত্য/মিথ্যা':type==='fitb'?'শূন্যস্থান পূরণ':'MCQ'}">${i+1}</div>`;
+  }).join('');
 }
 
+// MCQ select
 function selectAnswer(qId, val, el) {
   answers[qId] = val;
-  // sessionStorage এ answers সেভ করো (refresh proof)
-  if (currentExam && currentStudent) {
-    const answerKey = `exam_answers_${currentExam.id}_${currentStudent.id}`;
-    sessionStorage.setItem(answerKey, JSON.stringify(answers));
-  }
+  saveAnswers();
   document.querySelectorAll('.option-label').forEach(l => l.classList.remove('selected'));
   el.classList.add('selected');
   updateDots();
+}
+
+// True/False select
+function selectTF(qId, encodedVal, el, encBg, encColor, encBorder) {
+  const val = decodeURIComponent(encodedVal);
+  answers[qId] = val;
+  saveAnswers();
+  document.querySelectorAll('.tf-option').forEach(l => {
+    l.style.background = '#fff';
+    l.style.color = 'var(--text)';
+    l.style.borderColor = 'var(--border)';
+    l.classList.remove('selected');
+  });
+  el.classList.add('selected');
+  el.style.background = decodeURIComponent(encBg);
+  el.style.color = decodeURIComponent(encColor);
+  el.style.borderColor = decodeURIComponent(encBorder);
+  updateDots();
+}
+
+// Fill in the Blank select
+function selectFitb(qId, encodedVal, el) {
+  const val = decodeURIComponent(encodedVal);
+  answers[qId] = val;
+  saveAnswers();
+  document.querySelectorAll('.blank-option').forEach(b => {
+    b.style.background = '#fff';
+    b.style.color = 'var(--text)';
+    b.style.borderColor = 'var(--border)';
+  });
+  el.style.background = 'var(--primary)';
+  el.style.color = '#fff';
+  el.style.borderColor = 'var(--primary)';
+  const answerEl = document.getElementById('blankAnswer');
+  if (answerEl) answerEl.textContent = val;
+  updateDots();
+}
+
+function saveAnswers() {
+  if (currentExam && currentStudent) {
+    sessionStorage.setItem(`exam_answers_${currentExam.id}_${currentStudent.id}`, JSON.stringify(answers));
+  }
 }
 
 function nextQ() { if(currentQ < questions.length-1) { currentQ++; renderQuestion(); } }
