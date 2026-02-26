@@ -530,42 +530,122 @@ textarea.form-control { min-height: 80px; resize: vertical; }
     <h3>❓ নতুন প্রশ্ন যোগ করুন</h3>
     <div class="alert alert-error" id="addQError"></div>
     <div class="form-group">
-      <label class="form-label">প্রশ্ন (KaTeX ব্যবহার করতে পারেন: \frac{1}{2})</label>
+      <label class="form-label">প্রশ্নের ধরন</label>
+      <select class="form-control" id="qType" onchange="toggleQuestionType()">
+        <option value="mcq">MCQ (৪টি অপশন)</option>
+        <option value="truefalse">সত্য / মিথ্যা</option>
+        <option value="fillinblank">শূন্যস্থান পূরণ (Dropdown)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">প্রশ্ন <span style="color:var(--text-muted);font-weight:400">(KaTeX: \frac{1}{2}, \sqrt{4}, শূন্যস্থানে ___ লিখুন)</span></label>
       <textarea class="form-control" id="qText" placeholder="প্রশ্ন লিখুন..."></textarea>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">অপশন A</label>
-        <input class="form-control" id="qA" placeholder="অপশন A">
+
+    <!-- MCQ Options -->
+    <div id="mcqOptions">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">অপশন A</label>
+          <input class="form-control" id="qA" placeholder="অপশন A">
+        </div>
+        <div class="form-group">
+          <label class="form-label">অপশন B</label>
+          <input class="form-control" id="qB" placeholder="অপশন B">
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">অপশন B</label>
-        <input class="form-control" id="qB" placeholder="অপশন B">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">অপশন C</label>
+          <input class="form-control" id="qC" placeholder="অপশন C">
+        </div>
+        <div class="form-group">
+          <label class="form-label">অপশন D</label>
+          <input class="form-control" id="qD" placeholder="অপশন D">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">সঠিক উত্তর</label>
+          <select class="form-control" id="qCorrect">
+            <option value="a">A</option><option value="b">B</option>
+            <option value="c">C</option><option value="d">D</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">প্রশ্নের ক্রম</label>
+          <input class="form-control" id="qOrder" type="number" value="1" min="1">
+        </div>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">অপশন C</label>
-        <input class="form-control" id="qC" placeholder="অপশন C">
+
+    <!-- True/False Options -->
+    <div id="tfOptions" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">"সত্য" বাটনের লেখা</label>
+          <input class="form-control" id="qTFTrue" value="সত্য" placeholder="সত্য">
+        </div>
+        <div class="form-group">
+          <label class="form-label">"মিথ্যা" বাটনের লেখা</label>
+          <input class="form-control" id="qTFFalse" value="মিথ্যা" placeholder="মিথ্যা">
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">অপশন D</label>
-        <input class="form-control" id="qD" placeholder="অপশন D">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">সঠিক উত্তর</label>
+          <select class="form-control" id="qTFCorrect">
+            <option value="সত্য">সত্য</option>
+            <option value="মিথ্যা">মিথ্যা</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">প্রশ্নের ক্রম</label>
+          <input class="form-control" id="qTFOrder" type="number" value="1" min="1">
+        </div>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">সঠিক উত্তর</label>
-        <select class="form-control" id="qCorrect">
-          <option value="a">A</option><option value="b">B</option>
-          <option value="c">C</option><option value="d">D</option>
-        </select>
+
+    <!-- Fill in Blank Options -->
+    <div id="fibOptions" style="display:none">
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:0.8rem">
+        ২-৪টি অপশন দিন। যেটা সঠিক সেটা নির্বাচন করুন।
+      </p>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">অপশন A</label>
+          <input class="form-control" id="qFIBA" placeholder="অপশন A">
+        </div>
+        <div class="form-group">
+          <label class="form-label">অপশন B</label>
+          <input class="form-control" id="qFIBB" placeholder="অপশন B">
+        </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">প্রশ্নের ক্রম</label>
-        <input class="form-control" id="qOrder" type="number" value="1" min="1">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">অপশন C <span style="color:var(--text-muted)">(ঐচ্ছিক)</span></label>
+          <input class="form-control" id="qFIBC" placeholder="অপশন C (না দিলে খালি রাখুন)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">অপশন D <span style="color:var(--text-muted)">(ঐচ্ছিক)</span></label>
+          <input class="form-control" id="qFIBD" placeholder="অপশন D (না দিলে খালি রাখুন)">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">সঠিক উত্তর</label>
+          <select class="form-control" id="qFIBCorrect">
+            <option value="a">A</option><option value="b">B</option>
+            <option value="c">C</option><option value="d">D</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">প্রশ্নের ক্রম</label>
+          <input class="form-control" id="qFIBOrder" type="number" value="1" min="1">
+        </div>
       </div>
     </div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('addQuestionModal')">বাতিল</button>
       <button class="btn btn-success" onclick="addQuestion()">✓ যোগ করুন</button>
@@ -877,42 +957,109 @@ async function loadQuestions() {
   const {data} = await sb.from('questions').select('*').eq('exam_id',examId).order('question_order');
   const wrap = document.getElementById('questionsList');
   if(!data||!data.length){wrap.innerHTML='<div class="card"><p style="color:var(--text-muted)">কোনো প্রশ্ন নেই। প্রশ্ন যোগ করুন।</p></div>';return;}
-  wrap.innerHTML = data.map((q,i)=>`
+  wrap.innerHTML = data.map((q,i)=>{
+    const typeBadge = {
+      mcq: '<span style="background:rgba(124,58,237,0.2);color:#A78BFA;padding:0.1rem 0.5rem;border-radius:20px;font-size:0.7rem;font-weight:700">MCQ</span>',
+      truefalse: '<span style="background:rgba(16,185,129,0.2);color:#34D399;padding:0.1rem 0.5rem;border-radius:20px;font-size:0.7rem;font-weight:700">সত্য/মিথ্যা</span>',
+      fitb: '<span style="background:rgba(245,158,11,0.2);color:#FCD34D;padding:0.1rem 0.5rem;border-radius:20px;font-size:0.7rem;font-weight:700">শূন্যস্থান</span>',
+      fillinblank: '<span style="background:rgba(245,158,11,0.2);color:#FCD34D;padding:0.1rem 0.5rem;border-radius:20px;font-size:0.7rem;font-weight:700">শূন্যস্থান</span>'
+    };
+    const type = q.question_type || 'mcq';
+    let optionsHtml = '';
+    if (type === 'truefalse') {
+      const ca = q.correct_answer;
+      optionsHtml = `<span class="${ca===q.option_a||ca==='সত্য'?'q-correct':''}">✅ ${q.option_a||'সত্য'}</span>
+         <span class="${ca===q.option_b||ca==='মিথ্যা'?'q-correct':''}">❌ ${q.option_b||'মিথ্যা'}</span>`;
+    } else if (type === 'fitb') {
+      const ca = q.correct_answer;
+      optionsHtml = [q.option_a,q.option_b,q.option_c,q.option_d].filter(Boolean).map((o,idx)=>
+        `<span class="${ca===o?'q-correct':''}">${'ABCD'[idx]}: ${o}</span>`).join('');
+    } else {
+      optionsHtml = `<span class="${q.correct_answer==='a'?'q-correct':''}">A: ${q.option_a||''}</span>
+         <span class="${q.correct_answer==='b'?'q-correct':''}">B: ${q.option_b||''}</span>
+         ${q.option_c?`<span class="${q.correct_answer==='c'?'q-correct':''}">C: ${q.option_c}</span>`:''}
+         ${q.option_d?`<span class="${q.correct_answer==='d'?'q-correct':''}">D: ${q.option_d}</span>`:''}`;
+    }
+    return `
     <div class="q-item">
       <div class="q-item-header">
-        <span style="font-size:0.78rem;color:var(--primary-light);font-weight:600">প্রশ্ন ${i+1}</span>
+        <span style="display:flex;align-items:center;gap:0.5rem">
+          <span style="font-size:0.78rem;color:var(--primary-light);font-weight:600">প্রশ্ন ${i+1}</span>
+          ${typeBadge[type]||typeBadge.mcq}
+        </span>
         <button class="btn btn-danger btn-sm" onclick="deleteQuestion('${q.id}')">🗑 মুছুন</button>
       </div>
       <div class="q-item-text">${q.question_text}</div>
-      <div class="q-item-options">
-        <span class="${q.correct_answer==='a'?'q-correct':''}">A: ${q.option_a}</span>
-        <span class="${q.correct_answer==='b'?'q-correct':''}">B: ${q.option_b}</span>
-        <span class="${q.correct_answer==='c'?'q-correct':''}">C: ${q.option_c}</span>
-        <span class="${q.correct_answer==='d'?'q-correct':''}">D: ${q.option_d}</span>
-      </div>
-    </div>`).join('');
+      <div class="q-item-options">${optionsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleQuestionType() {
+  const type = document.getElementById('qType').value;
+  document.getElementById('mcqOptions').style.display = type === 'mcq' ? 'block' : 'none';
+  document.getElementById('tfOptions').style.display = type === 'truefalse' ? 'block' : 'none';
+  document.getElementById('fibOptions').style.display = type === 'fillinblank' ? 'block' : 'none';
 }
 
 function openAddQuestion() {
   if(!selectedExamForQ){alert('আগে পরীক্ষা বেছে নিন');return;}
+  document.getElementById('qType').value = 'mcq';
+  toggleQuestionType();
   openModal('addQuestionModal');
 }
 
 async function addQuestion() {
-  const text=document.getElementById('qText').value.trim();
-  const a=document.getElementById('qA').value.trim();
-  const b=document.getElementById('qB').value.trim();
-  const c=document.getElementById('qC').value.trim();
-  const d=document.getElementById('qD').value.trim();
-  const correct=document.getElementById('qCorrect').value;
-  const order=parseInt(document.getElementById('qOrder').value)||1;
-  if(!text||!a||!b||!c||!d){showAlert('addQError','সব ঘর পূরণ করুন');return;}
+  const type = document.getElementById('qType').value;
+  const text = document.getElementById('qText').value.trim();
+  if(!text) { showAlert('addQError','প্রশ্ন লিখুন'); return; }
+
+  // admin এ fillinblank কিন্তু DB তে fitb
+  const dbType = type === 'fillinblank' ? 'fitb' : type;
+  let payload = { exam_id: selectedExamForQ, question_text: text, question_type: dbType };
+
+  if (type === 'mcq') {
+    const a=document.getElementById('qA').value.trim();
+    const b=document.getElementById('qB').value.trim();
+    const c=document.getElementById('qC').value.trim();
+    const d=document.getElementById('qD').value.trim();
+    if(!a||!b||!c||!d){ showAlert('addQError','সব অপশন পূরণ করুন'); return; }
+    payload = {...payload, option_a:a, option_b:b, option_c:c, option_d:d,
+      correct_answer: document.getElementById('qCorrect').value,
+      question_order: parseInt(document.getElementById('qOrder').value)||1 };
+
+  } else if (type === 'truefalse') {
+    const trueLabel = document.getElementById('qTFTrue').value || 'সত্য';
+    const falseLabel = document.getElementById('qTFFalse').value || 'মিথ্যা';
+    const correctVal = document.getElementById('qTFCorrect').value; // 'সত্য' বা 'মিথ্যা'
+    payload = {...payload,
+      option_a: trueLabel,
+      option_b: falseLabel,
+      correct_answer: correctVal,
+      question_order: parseInt(document.getElementById('qTFOrder').value)||1 };
+
+  } else if (type === 'fillinblank') {
+    const a=document.getElementById('qFIBA').value.trim();
+    const b=document.getElementById('qFIBB').value.trim();
+    if(!a||!b){ showAlert('addQError','কমপক্ষে ২টি অপশন দিন'); return; }
+    const correctText = document.getElementById('qFIBCorrect').value.trim();
+    if(!correctText){ showAlert('addQError','সঠিক উত্তর লিখুন'); return; }
+    payload = {...payload,
+      option_a: a, option_b: b,
+      option_c: document.getElementById('qFIBC').value.trim()||null,
+      option_d: document.getElementById('qFIBD').value.trim()||null,
+      correct_answer: correctText,
+      question_order: parseInt(document.getElementById('qFIBOrder').value)||1 };
+  }
+
   loading(true);
-  const {error} = await sb.from('questions').insert({exam_id:selectedExamForQ,question_text:text,option_a:a,option_b:b,option_c:c,option_d:d,correct_answer:correct,question_order:order});
+  const {error} = await sb.from('questions').insert(payload);
   loading(false);
-  if(error){showAlert('addQError','ত্রুটি: '+error.message);return;}
-  document.getElementById('qText').value='';document.getElementById('qA').value='';
-  document.getElementById('qB').value='';document.getElementById('qC').value='';document.getElementById('qD').value='';
+  if(error){ showAlert('addQError','ত্রুটি: '+error.message); return; }
+
+  ['qText','qA','qB','qC','qD','qFIBA','qFIBB','qFIBC','qFIBD','qFIBCorrect'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.value='';
+  });
   closeModal('addQuestionModal');
   loadQuestions();
 }
