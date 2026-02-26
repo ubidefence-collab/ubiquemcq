@@ -484,6 +484,8 @@ body {
 
 /* ── MERIT LIST ── */
 .merit-wrap { max-width: 760px; margin: 0 auto; padding: 1.5rem; }
+#tab-exammerit .merit-table-card,
+#tab-merit .merit-table-card { max-width: 760px; margin: 0 auto; }
 .merit-table-card {
   background: #fff;
   border-radius: 16px;
@@ -684,7 +686,8 @@ tr:hover td { background: #FAFBFF; }
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab('exams', this)">📋 পরীক্ষার তালিকা</button>
-      <button class="tab" onclick="switchTab('merit', this)">🏆 মেরিট লিস্ট</button>
+      <button class="tab" onclick="switchTab('exammerit', this)">🥇 পরীক্ষার মেরিট</button>
+      <button class="tab" onclick="switchTab('merit', this)">🏆 মাসিক মেরিট</button>
     </div>
 
     <!-- Exams Tab -->
@@ -695,20 +698,33 @@ tr:hover td { background: #FAFBFF; }
       </div>
     </div>
 
-    <!-- Merit Tab -->
+    <!-- Per-Exam Merit Tab -->
+    <div id="tab-exammerit" style="display:none">
+      <div class="merit-table-card">
+        <div class="merit-filter">
+          <span style="font-weight:600;font-size:0.9rem">🥇 পরীক্ষার মেরিট লিস্ট</span>
+          <select id="examMeritSelect" onchange="loadExamMerit()">
+            <option value="">পরীক্ষা বেছে নিন</option>
+          </select>
+        </div>
+        <div id="examMeritTableWrap">
+          <div class="empty-state"><div class="empty-icon">📋</div><p>উপরে পরীক্ষা বেছে নিন</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Merit Tab -->
     <div id="tab-merit" style="display:none">
-      <div class="merit-wrap" style="padding:0">
-        <div class="merit-table-card">
-          <div class="merit-filter">
-            <span style="font-weight:600;font-size:0.9rem">🏆 মাসিক মেরিট লিস্ট</span>
-            <select id="meritMonth" onchange="loadMerit()">
-              <option value="February 2025">ফেব্রুয়ারি ২০২৫</option>
-              <option value="March 2025">মার্চ ২০২৫</option>
-            </select>
-          </div>
-          <div id="meritTableWrap">
-            <div class="empty-state"><div class="empty-icon">⏳</div><p>লোড হচ্ছে...</p></div>
-          </div>
+      <div class="merit-table-card">
+        <div class="merit-filter">
+          <span style="font-weight:600;font-size:0.9rem">🏆 মাসিক মেরিট লিস্ট</span>
+          <select id="meritMonth" onchange="loadMerit()">
+            <option value="February 2025">ফেব্রুয়ারি ২০২৫</option>
+            <option value="March 2025">মার্চ ২০২৫</option>
+          </select>
+        </div>
+        <div id="meritTableWrap">
+          <div class="empty-state"><div class="empty-icon">⏳</div><p>লোড হচ্ছে...</p></div>
         </div>
       </div>
     </div>
@@ -1068,8 +1084,73 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('tab-exams').style.display = tab==='exams'?'block':'none';
+  document.getElementById('tab-exammerit').style.display = tab==='exammerit'?'block':'none';
   document.getElementById('tab-merit').style.display = tab==='merit'?'block':'none';
+  if(tab==='exammerit') loadExamMeritList();
   if(tab==='merit') loadMerit();
+}
+
+// ── PER-EXAM MERIT ──
+async function loadExamMeritList() {
+  const sel = document.getElementById('examMeritSelect');
+  const current = sel.value;
+  const { data } = await sb.from('exams')
+    .select('id,title,subject,week_number')
+    .eq('class', currentStudent.class)
+    .eq('is_active', true)
+    .order('week_number');
+  sel.innerHTML = '<option value="">পরীক্ষা বেছে নিন</option>';
+  (data||[]).forEach(e => {
+    sel.innerHTML += `<option value="${e.id}" ${current===e.id?'selected':''}>${e.title}</option>`;
+  });
+  if(current) loadExamMerit();
+}
+
+async function loadExamMerit() {
+  const examId = document.getElementById('examMeritSelect').value;
+  const wrap = document.getElementById('examMeritTableWrap');
+  if(!examId) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>উপরে পরীক্ষা বেছে নিন</p></div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>লোড হচ্ছে...</p></div>';
+
+  const { data: results } = await sb.from('results')
+    .select('score, total_questions, submitted_at, student_id, students(name, roll, class)')
+    .eq('exam_id', examId)
+    .order('score', { ascending: false });
+
+  if(!results || results.length === 0) {
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>এখনো কেউ পরীক্ষা দেয়নি</p></div>';
+    return;
+  }
+
+  const rankBadge = pos => {
+    if(pos===1) return '<span class="rank-badge rank-gold">🥇</span>';
+    if(pos===2) return '<span class="rank-badge rank-silver">🥈</span>';
+    if(pos===3) return '<span class="rank-badge rank-bronze">🥉</span>';
+    return `<span class="rank-badge rank-normal">${pos}</span>`;
+  };
+
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>স্থান</th><th>নাম</th><th>রোল</th>
+      <th>নম্বর</th><th>শতাংশ</th><th>জমার সময়</th>
+    </tr></thead>
+    <tbody>${results.map((r,i) => {
+      const pct = Math.round(r.score/r.total_questions*100);
+      const isMe = r.student_id === currentStudent.id;
+      return `<tr style="${isMe?'background:#EDE9FE;':''}">
+        <td>${rankBadge(i+1)}</td>
+        <td><strong>${r.students?.name||'-'}</strong>${isMe?' <span style="color:var(--primary);font-size:0.75rem">(তুমি)</span>':''}</td>
+        <td>${r.students?.roll||'-'}</td>
+        <td><strong>${r.score}/${r.total_questions}</strong></td>
+        <td>${pct}%</td>
+        <td style="font-size:0.8rem;color:var(--text-muted)">${new Date(r.submitted_at).toLocaleString('bn-BD')}</td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
 }
 
 // ── MERIT LIST ──
