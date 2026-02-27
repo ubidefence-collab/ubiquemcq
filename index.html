@@ -668,55 +668,174 @@ tr:hover td { background: #FAFBFF; }
 }
 
 /* ── RESPONSIVE ── */
-@media(max-width:600px) {
-  .header { padding: 0 1rem; }
-  .header-logo { font-size: 1.1rem; }
+
+/* Tablet */
+@media(max-width: 768px) {
+  .dashboard-wrap { padding: 1.2rem 1rem; }
+  .exam-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .welcome-banner { padding: 1.2rem 1.5rem; }
+  .welcome-text h2 { font-size: 1.2rem; }
+  .welcome-emoji { font-size: 2.8rem; }
+}
+
+/* Mobile */
+@media(max-width: 600px) {
+
+  /* Header */
+  .header { padding: 0 0.9rem; height: 56px; }
+  .header-logo { font-size: 1rem; gap: 0.3rem; }
+  .header-logo span { font-size: 1.3rem; }
   .student-badge { display: none; }
+  .btn-logout { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
 
-  .welcome-banner { flex-direction: column; gap: 0.5rem; padding: 1.2rem; }
-  .welcome-emoji { display: none; }
-  .dashboard-wrap { padding: 1rem; }
+  /* Login */
+  .login-wrap { padding: 1rem; align-items: flex-start; padding-top: 2rem; }
+  .login-card { padding: 1.5rem 1.2rem 1.2rem; border-radius: 18px; }
+  .login-icon { width: 60px; height: 60px; font-size: 1.6rem; }
+  .login-title { font-size: 1.3rem; }
 
-  .exam-grid { grid-template-columns: 1fr; }
+  /* Dashboard */
+  .dashboard-wrap { padding: 0.9rem 0.8rem; }
 
-  .exam-wrap { padding: 0.8rem; }
-  .exam-header {
+  /* Welcome banner */
+  .welcome-banner {
     flex-direction: row;
     align-items: center;
-    padding: 0.9rem 1rem;
+    justify-content: flex-start;
+    padding: 1rem 1.1rem;
+    gap: 0.8rem;
+    border-radius: 16px;
+    margin-bottom: 1.2rem;
+  }
+  .welcome-emoji { font-size: 2.4rem; flex-shrink: 0; }
+  .welcome-text h2 { font-size: 1.05rem; line-height: 1.3; }
+  .welcome-text p { font-size: 0.8rem; margin-top: 0.15rem; }
+
+  /* Stats row (যদি থাকে) */
+  .stats-row { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .stat-card { padding: 0.8rem; }
+
+  /* Tabs */
+  .tabs {
+    gap: 0.3rem;
+    padding: 0.3rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    font-size: 0.76rem;
+    padding: 0.45rem 0.6rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    border-radius: 8px;
+  }
+
+  /* Exam cards */
+  .exam-grid {
+    grid-template-columns: 1fr;
     gap: 0.8rem;
   }
-  .exam-header-info h3 { font-size: 0.9rem; }
-  .exam-header-info p { font-size: 0.75rem; }
-  .timer-box { min-width: 70px; padding: 0.4rem 0.8rem; }
-  .timer-time { font-size: 1.2rem; }
+  .exam-card {
+    padding: 1rem 1.1rem;
+    border-radius: 14px;
+  }
+  .exam-title { font-size: 0.95rem; }
+  .exam-meta { font-size: 0.76rem; }
+  .btn-exam { padding: 0.5rem; font-size: 0.85rem; margin-top: 0.7rem; }
 
-  .q-dots { gap: 0.3rem; }
-  .q-dot { width: 28px; height: 28px; font-size: 0.7rem; }
+  /* Section title */
+  .section-title { font-size: 1rem; margin-bottom: 0.7rem; }
 
-  .question-card { padding: 1rem; }
-  .q-text { font-size: 0.95rem; }
-  .option-label { padding: 0.6rem 0.8rem; font-size: 0.88rem; }
+  /* Merit table */
+  .merit-table-card { border-radius: 12px; }
+  .merit-filter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.8rem;
+  }
+  .merit-filter select {
+    width: 100%;
+    font-size: 0.85rem;
+  }
+  .merit-filter span { font-size: 0.85rem; }
 
-  .exam-nav {
-    flex-wrap: wrap;
+  /* Table scroll on mobile */
+  .merit-table-card > div,
+  #meritTableWrap,
+  #examMeritTableWrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { font-size: 0.75rem; min-width: 420px; }
+  th { padding: 0.55rem 0.6rem; font-size: 0.7rem; }
+  td { padding: 0.5rem 0.6rem; }
+
+  /* Exam page */
+  .exam-wrap { padding: 0.7rem; }
+  .exam-header {
+    padding: 0.8rem 1rem;
+    gap: 0.6rem;
+    border-radius: 14px;
+  }
+  .exam-header-info h3 { font-size: 0.88rem; }
+  .exam-header-info p { font-size: 0.72rem; }
+  .timer-box { min-width: 64px; padding: 0.35rem 0.6rem; border-radius: 10px; }
+  .timer-time { font-size: 1.1rem; }
+  .timer-label { font-size: 0.55rem; }
+
+  /* Question dots */
+  .q-dots { gap: 0.25rem; flex-wrap: wrap; }
+  .q-dot { width: 26px; height: 26px; font-size: 0.65rem; border-radius: 8px; }
+
+  /* Question card */
+  .question-card { padding: 1rem; border-radius: 14px; }
+  .q-number { font-size: 0.78rem; }
+  .q-text { font-size: 0.92rem; line-height: 1.6; margin: 0.6rem 0 0.9rem; }
+  .option-label {
+    padding: 0.65rem 0.9rem;
+    font-size: 0.88rem;
+    border-radius: 10px;
     gap: 0.6rem;
   }
-  .btn-nav { flex: 1; min-width: 100px; font-size: 0.82rem; padding: 0.55rem 0.8rem; }
-  .btn-submit { width: 100%; order: -1; }
+  .option-key {
+    width: 26px; height: 26px;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
 
-  .result-stats { grid-template-columns: 1fr 1fr; }
-  .result-wrap { padding: 1rem; }
+  /* Nav buttons */
+  .exam-nav { gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+  .btn-nav {
+    flex: 1;
+    min-width: 90px;
+    font-size: 0.8rem;
+    padding: 0.55rem 0.5rem;
+    border-radius: 10px;
+  }
+  .btn-submit {
+    width: 100%;
+    order: -1;
+    padding: 0.7rem;
+    font-size: 0.9rem;
+    border-radius: 10px;
+  }
+
+  /* Result page */
+  .result-wrap { padding: 0.8rem; }
+  .result-card { padding: 1.8rem 1.2rem; border-radius: 20px; }
+  .result-emoji { font-size: 3rem; }
+  .result-title { font-size: 1.3rem; }
   .result-score-big { font-size: 2.8rem; }
-
-  .merit-filter { flex-direction: column; align-items: flex-start; }
-  table { font-size: 0.78rem; }
-  th, td { padding: 0.5rem 0.6rem; }
-
-  .tabs { flex-wrap: nowrap; overflow-x: auto; }
-  .tab { font-size: 0.8rem; padding: 0.5rem 0.6rem; white-space: nowrap; }
-
-  .login-card { padding: 1.5rem 1.2rem; }
+  .result-out-of { font-size: 0.85rem; }
+  .result-stats { grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+  .stat-box { padding: 0.8rem 0.5rem; border-radius: 12px; }
+  .stat-val { font-size: 1.2rem; }
+  .stat-lbl { font-size: 0.7rem; }
+  .merit-badge { font-size: 0.9rem; padding: 0.5rem 1rem; }
+  .btn-back-dash { font-size: 0.9rem; padding: 0.7rem 1.5rem; }
 }
 </style>
 </head>
@@ -811,11 +930,11 @@ tr:hover td { background: #FAFBFF; }
       <div class="merit-table-card">
         <div class="merit-filter">
           <span style="font-weight:600;font-size:0.9rem">🥇 পরীক্ষার মেরিট লিস্ট</span>
-          <select id="examMeritSelect" onchange="loadExamMerit()">
+          <select id="examMeritSelect" onchange="loadExamMerit()" style="flex:1;min-width:0">
             <option value="">পরীক্ষা বেছে নিন</option>
           </select>
         </div>
-        <div id="examMeritTableWrap">
+        <div id="examMeritTableWrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
           <div class="empty-state"><div class="empty-icon">📋</div><p>উপরে পরীক্ষা বেছে নিন</p></div>
         </div>
       </div>
@@ -826,12 +945,12 @@ tr:hover td { background: #FAFBFF; }
       <div class="merit-table-card">
         <div class="merit-filter">
           <span style="font-weight:600;font-size:0.9rem">🏆 মাসিক মেরিট লিস্ট</span>
-          <select id="meritMonth" onchange="loadMerit()">
-            <option value="February 2025">ফেব্রুয়ারি ২০২৫</option>
-            <option value="March 2025">মার্চ ২০২৫</option>
+          <select id="meritMonth" onchange="loadMerit()" style="flex:1;min-width:0">
+            <option value="February 2026">ফেব্রুয়ারি ২০২৬</option>
+            <option value="March 2026">মার্চ ২০২৬</option>
           </select>
         </div>
-        <div id="meritTableWrap">
+        <div id="meritTableWrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
           <div class="empty-state"><div class="empty-icon">⏳</div><p>লোড হচ্ছে...</p></div>
         </div>
       </div>
